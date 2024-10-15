@@ -10,7 +10,7 @@ use serenity::{
     prelude::*,
 };
 use std::collections::HashMap;
-use uiuaizing::{get_docs, run_uiua};
+use uiuaizing::{get_docs, highlight_code, run_uiua};
 
 const HELP_MESSAGE: &str = r#"The help message has not been written yet!"#;
 
@@ -20,20 +20,17 @@ struct Handler;
 impl EventHandler for Handler {
     async fn message(&self, ctx: Context, msg: Message) {
         let s = msg.content.clone();
-        dbg!(&s);
         if is_command(&s, "ping").is_some() {
             send_message(msg, &ctx.http, "Pong!").await;
         } else if is_command(&s, "help").is_some() {
             send_message(msg, &ctx.http, HELP_MESSAGE).await;
-        } else if let Some(mut code) = is_command(&s, "run") {
-            code = code.trim();
-            code = code.strip_prefix("```").unwrap_or(code);
-            code = code.strip_suffix("```").unwrap_or(code);
-
-            let result = run_uiua(code);
+        } else if let Some(code) = is_command(&s, "run") {
+            let result = run_uiua(strip_triple_ticks(code));
             send_message(msg, &ctx.http, &result).await;
         } else if let Some(f) = is_command(&s, "docs") {
             send_message(msg, &ctx.http, &get_docs(f.trim())).await;
+        } else if let Some(code) = is_command(&s, "fmt") {
+            send_message(msg, &ctx.http, &highlight_code(strip_triple_ticks(code))).await;
         }
     }
 
@@ -71,4 +68,13 @@ async fn send_message(msg: Message, http: &Arc<Http>, text: &str) {
 fn is_command<'a, 'b>(m: &'a str, cmd: &'b str) -> Option<&'a str> {
     m.strip_prefix(&format!("!wawa {}", cmd))
         .or_else(|| m.strip_prefix(&format!("!w {}", cmd)))
+}
+
+
+fn strip_triple_ticks(mut s: &str) -> &str {
+    s = s.trim();
+    s = s.strip_prefix("```").unwrap_or(s);
+    s = s.strip_prefix("uiua").unwrap_or(s);
+    s = s.strip_suffix("```").unwrap_or(s);
+    s
 }
