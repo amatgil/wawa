@@ -5,13 +5,12 @@ pub use std::sync::Arc;
 use dotenv;
 use serenity::{
     all::{Http, Ready},
-    async_trait,
+    async_trait
     model::channel::Message,
     prelude::*,
 };
 use std::collections::HashMap;
-use uiuaizing::{get_docs, highlight_code, run_uiua};
-
+use uiuaizing::{get_docs, highlight_code, run_uiua, format_and_get_pad_link};
 const HELP_MESSAGE: &str = r#"The help message has not been written yet!"#;
 
 struct Handler;
@@ -31,6 +30,10 @@ impl EventHandler for Handler {
             send_message(msg, &ctx.http, &get_docs(f.trim())).await;
         } else if let Some(code) = is_command(&s, "fmt") {
             send_message(msg, &ctx.http, &highlight_code(strip_triple_ticks(code))).await;
+        } else if let Some(code) = is_command(&s, "pad") {
+            send_message(msg, &ctx.http, &format_and_get_pad_link(code)).await;
+        } else if is_command(&s, "").is_some() {
+            send_message(msg, &ctx.http, "I don't recognize that command :pensive:").await;
         }
     }
 
@@ -58,7 +61,10 @@ async fn main() {
     }
 }
 
-async fn send_message(msg: Message, http: &Arc<Http>, text: &str) {
+async fn send_message(msg: Message, http: &Arc<Http>, mut text: &str) {
+    if text.len() > 1000 {
+        text = "Message is way too long";
+    }
     match msg.channel_id.say(http, text).await {
         Ok(_) => {}
         Err(why) => println!("Error sending message: {why:?}"),

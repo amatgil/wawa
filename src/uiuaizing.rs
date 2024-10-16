@@ -1,12 +1,11 @@
 use std::time::Duration;
 
-use uiua::PrimClass;
-use uiua::PrimDocLine;
-use uiua::PrimDocFragment;
-use uiua::Primitive;
-use uiua::Signature;
-use uiua::Uiua;
 use std::collections::HashMap;
+use uiua::{PrimClass, PrimDocFragment, PrimDocLine, Primitive, Signature, Uiua};
+use uiua::format::*;
+use base64::{Engine};
+
+use base64::engine::general_purpose::URL_SAFE;
 
 const DEFAULT_EXECUTION_LIMIT: Duration = Duration::from_secs(4);
 
@@ -55,8 +54,9 @@ pub fn get_docs(f: &str) -> String {
 
 fn print_docs(line: &PrimDocLine) -> String {
     match line {
-        PrimDocLine::Text(vs) => {
-            vs.into_iter().map(|v| match v {
+        PrimDocLine::Text(vs) => vs
+            .into_iter()
+            .map(|v| match v {
                 PrimDocFragment::Text(t) => t.clone(),
                 PrimDocFragment::Code(t) => format!("```\n{t}\n```"),
                 PrimDocFragment::Emphasis(t) => format!("_{t}_"),
@@ -67,10 +67,11 @@ fn print_docs(line: &PrimDocLine) -> String {
                     } else {
                         prim.to_string()
                     }
-                },
+                }
                 PrimDocFragment::Link { text, url } => format!("[{text}]({url})"),
-            }).collect::<Vec<String>>().join("\n")
-        }
+            })
+            .collect::<Vec<String>>()
+            .join("\n"),
         PrimDocLine::Example(e) => {
             format!(
                 "```
@@ -81,20 +82,16 @@ fn print_docs(line: &PrimDocLine) -> String {
                 e.input(),
                 match e.output().as_ref().map(|vs| vs.join(";")) {
                     Ok(l) => l,
-                    Err(l) => l.clone()
+                    Err(l) => l.clone(),
                 }
             )
         }
     }
 }
 
-
-//fn ansi_code([r, g, b]: [f32; 3]) -> String {
-//    format!("\x1B[38;2;{{{}}};{{{}}};{{{}}}m",
-//            (255.0 * r) as u8,
-//            (255.0 * g),
-//            (255.0 * b))
-//}
+fn ansi_code(code: u8) -> String {
+    format!("\x1B[38;5;{}m", code)
+}
 fn reset_ansi() -> String {
     "\x1b[0m".into()
 }
@@ -107,37 +104,24 @@ pub fn highlight_code(code: &str) -> String {
     format!("```ansi\n{cs}\n```")
 }
 
-
-// TODO: highlighting can go here, even
 fn print_char(c: char) -> String {
     let g = match Primitive::from_glyph(c) {
         Some(g) => g,
-        None => return c.to_string()
+        None => return c.to_string(),
     };
 
-
-    //let cols: HashMap<&str, [f32; 3]> = HashMap::from([
-    //    ("White", [1.0, 1.0, 1.0]),
-    //    ("Black", [0.0, 0.0, 0.0]),
-    //    ("Red", [1.0, 0.0, 0.0]),
-    //    ("Orange", [1.0, 0.5, 0.0]),
-    //    ("Yellow", [1.0, 1.0, 0.0]),
-    //    ("Green", [0.0, 1.0, 0.0]),
-    //    ("Cyan", [0.0, 1.0, 1.0]),
-    //    ("Blue", [0.0, 0.0, 1.0]),
-    //    ("Purple", [0.5, 0.0, 1.0]),
-    //    ("Magenta", [1.0, 0.0, 1.0]),
-    //]);
     let codes = HashMap::from([
-        ("Black" , 30),
-        ("Red" , 31),
-        ("Green" , 32),
-        ("Yellow" , 33),
-        ("Blue" , 34),
-        ("Magenta" , 35),
-        ("Cyan" , 36),
-        ("White" , 37),
-        ("Reset" , 0)]);
+        ("Black", 30),
+        ("Red", 31),
+        ("Green", 32),
+        ("Yellow", 33),
+        ("Blue", 34),
+        ("Magenta", 35),
+        ("Cyan", 36),
+        ("White", 37),
+        ("Orange", 37),
+        ("Reset", 0),
+    ]);
     let noadic = "Red";
     let monadic = "Green";
     let monadic_mod = "Yellow";
@@ -161,14 +145,25 @@ fn print_char(c: char) -> String {
         }
     };
 
-    let col_s = for_prim(g, g.signature()).unwrap_or("White"); 
-    format!("\x1B[{}m{}\x1B[{}m",
-            codes.get(col_s).unwrap(),
-            g,
-            codes.get("Reset").unwrap(),
+    let col_s = for_prim(g, g.signature()).unwrap_or("White");
+    format!(
+        "\x1B[1;3;{}m{}\x1B[{}m",
+        codes.get(col_s).unwrap(),
+        g,
+        codes.get("Reset").unwrap(),
     )
 }
 
 fn print_emoji(c: &Primitive) -> String {
     format!(":{}:", c.name())
+}
+
+pub fn format_and_get_pad_link(code: &str) -> String {
+    let config = FormatConfig::default();
+    let formatted = format_str(code, &config).unwrap().output;
+
+    let encoded = URL_SAFE.encode(code);
+    let link = format!("https://www.uiua.org/pad?src={}__{encoded}", uiua::VERSION);
+
+    format!("[pad]({link}) for: {}", highlight_code(&formatted))
 }
