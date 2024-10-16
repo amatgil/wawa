@@ -35,19 +35,21 @@ Get the dimensions of an array
 ```
 `!w pad unshape roundmul10rand_rand_rand` returns 
 ```
-[Code](https://uiua.org/pad?src=0_13_0-rc_1__wrDilrMg4oGFw5cxMOKagl_imoIK): 
-\`\`\`uiua
+[Pad](https://uiua.org/pad?src=0_13_0-rc_1__wrDilrMg4oGFw5cxMOKagl_imoIK) for:
+```uiua
 °△ ⁅×10⚂_⚂
-\`\`\`
+\```
 ```
 
+All uiua codeblocks use custom syntax highlighting using the `ansi` environment (which is
+incredibly limited, thank you discord for using the smallest number of colors possible).
 
 # Goals
 - [X] Docs command: `!w docs tuple` returns the documentation for `tuple`
-- [ ]`!w pad <code>` Automatic pad link
+- [X]`!w pad <code>` Automatic pad link
 - [X] have `fmt` color glyphs
 - [ ] have `fmt`'s colors look good
-- [ ] Catch messages that are too long
+- [X] Catch messages that are too long
 - [ ] Audio embeds (don't just crash)
 - [ ] Image embeds (don't just crash)
 - [ ] Gif embeds (don't just crash)

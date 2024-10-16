@@ -32,7 +32,7 @@ impl EventHandler for Handler {
             send_message(msg, &ctx.http, &result).await;
         } else if let Some(f) = is_command(&s, "docs") {
             send_message(msg, &ctx.http, &get_docs(f.trim())).await;
-        } else if let Some(code) = is_command(&s, "fmt") {
+        } else if let Some(code) = is_command(&s, "high") {
             send_message(msg, &ctx.http, &highlight_code(strip_triple_ticks(code))).await;
         } else if let Some(code) = is_command(&s, "pad") {
             send_message(msg, &ctx.http, &format_and_get_pad_link(code)).await;
