@@ -8,6 +8,7 @@ use wawa::*;
 
 use std::{collections::HashMap, fmt::Debug, future::Future, ops::{Add, Deref}};
 const SELF_ID: &str = "<@1295816766446108795>";
+const SELF_ROLE: &str = "<@&1295816766446108795>";
 
 struct Handler;
 
@@ -23,7 +24,10 @@ impl EventHandler for Handler {
         let s = contents.trim();
         let Some(s) = s.strip_prefix("w!")
             .or_else(||s.strip_prefix("wawa!"))
-            .or_else(||s.strip_prefix("{SELF_ID}")) else { return };
+            .or_else(||s.strip_prefix(&format!("{SELF_ID}"))
+            .or_else(||s.strip_prefix(&format!("{SELF_ROLE}")))) else { return };
+
+        let s = s.strip_prefix(" ").unwrap_or_else(|| s);
 
         let space_idx = s.bytes().position(|c| c == b' ').unwrap_or_else(||s.len());
 
