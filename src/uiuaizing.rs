@@ -85,8 +85,8 @@ fn print_docs(line: &PrimDocLine) -> String {
 ",
                 e.input(),
                 match e.output().as_ref().map(|vs| vs.join(";")) {
-                    Ok(l) => l,
-                    Err(l) => l.clone(),
+                    Ok(l) => format!("> {l}"),
+                    Err(l) => format!("> {l}"),
                 }
             )
         }

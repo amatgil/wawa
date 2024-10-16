@@ -45,11 +45,16 @@ All uiua codeblocks use custom syntax highlighting using the `ansi` environment 
 incredibly limited, thank you discord for using the smallest number of colors possible).
 
 # Goals
-- [X] Docs command: `!w docs tuple` returns the documentation for `tuple`
-- [X]`!w pad <code>` Automatic pad link
+- [X] Docs command: `w! docs tuple` returns the documentation for `tuple`
+- [X] `w! pad <code>` Automatic pad link
 - [X] have `fmt` color glyphs
-- [ ] have `fmt`'s colors look good
+- [X] have `fmt`'s colors look good
 - [X] Catch messages that are too long
 - [ ] Audio embeds (don't just crash)
 - [ ] Image embeds (don't just crash)
 - [ ] Gif embeds (don't just crash)
+- [ ] Short summary of function in `w! docs`
+- [ ] Write out help
+- [ ] Accept `w!cmd` syntax
+- [ ] Automate command dispatch
+- [ ] Add `tracing` (including reason, span, date, etc)

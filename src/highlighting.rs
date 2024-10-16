@@ -90,9 +90,9 @@ pub fn highlight_code(code: &str) -> String {
             let text = &code[s.span.start.byte_pos as usize..s.span.end.byte_pos as usize];
             match s.value {
                 SpanKind::Primitive(p, sig) => print_prim(p, sig),
-                SpanKind::String => with_style(text, AnsiState::just_color(AnsiColor::Blue)),
+                SpanKind::String => with_style(text, AnsiState::just_color(AnsiColor::Cyan)),
                 SpanKind::Number => with_style(text, AnsiState {
-                    color: AnsiColor::White,
+                    color: AnsiColor::Red,
                     bold: true,
                     ..Default::default()
                 }),

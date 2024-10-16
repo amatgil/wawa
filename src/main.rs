@@ -13,7 +13,7 @@ use std::collections::HashMap;
 //use uiuaizing::{get_docs, highlight_code, run_uiua, format_and_get_pad_link};
 const HELP_MESSAGE: &str = r#"The help message has not been written yet!"#;
 
-
+const SELF_ID: &str = "<@1295816766446108795>";
 
 struct Handler;
 
@@ -28,16 +28,19 @@ impl EventHandler for Handler {
         } else if is_command(&s, "help").is_some() {
             send_message(msg, &ctx.http, HELP_MESSAGE).await;
         } else if let Some(code) = is_command(&s, "run") {
-            let result = run_uiua(strip_triple_ticks(code));
+            let result = run_uiua(strip_triple_ticks(code.trim()));
             send_message(msg, &ctx.http, &result).await;
         } else if let Some(f) = is_command(&s, "docs") {
             send_message(msg, &ctx.http, &get_docs(f.trim())).await;
         } else if let Some(code) = is_command(&s, "high") {
-            send_message(msg, &ctx.http, &highlight_code(strip_triple_ticks(code))).await;
+            send_message(msg, &ctx.http, &highlight_code(strip_triple_ticks(code.trim()))).await;
         } else if let Some(code) = is_command(&s, "pad") {
-            send_message(msg, &ctx.http, &format_and_get_pad_link(code)).await;
-        } else if is_command(&s, "").is_some() {
-            send_message(msg, &ctx.http, "I don't recognize that command :pensive:").await;
+            send_message(msg, &ctx.http, &format_and_get_pad_link(code.trim())).await;
+        } else if let Some(unrec) = is_command(&s, "") {
+            let unrec = unrec.trim();
+            let shortened = &unrec[0..(30.min(unrec.len()))];
+            eprintln!("Someone sent an unrecognized command: '{shortened}'");
+            send_message(msg, &ctx.http, &format!("I don't recognize '{}' as a command :pensive:", shortened)).await;
         }
     }
 
@@ -76,8 +79,9 @@ async fn send_message(msg: Message, http: &Arc<Http>, mut text: &str) {
 }
 
 fn is_command<'a, 'b>(m: &'a str, cmd: &'b str) -> Option<&'a str> {
-    m.strip_prefix(&format!("!wawa {}", cmd))
-        .or_else(|| m.strip_prefix(&format!("!w {}", cmd)))
+    m.strip_prefix(&format!("wawa!{}", cmd))
+        .or_else(|| m.strip_prefix(&format!("w!{}", cmd)))
+        .or_else(|| m.strip_prefix(&format!("{SELF_ID}{}", cmd))).map(|s| s.trim())
 }
 
 
