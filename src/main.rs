@@ -5,10 +5,12 @@ pub use std::sync::Arc;
 use dotenv;
 use serenity::{
     all::{Http, Ready},
-    async_trait
+    async_trait,
     model::channel::Message,
     prelude::*,
 };
+use uiua;
+
 use std::collections::HashMap;
 use uiuaizing::{get_docs, highlight_code, run_uiua, format_and_get_pad_link};
 const HELP_MESSAGE: &str = r#"The help message has not been written yet!"#;
@@ -21,6 +23,8 @@ impl EventHandler for Handler {
         let s = msg.content.clone();
         if is_command(&s, "ping").is_some() {
             send_message(msg, &ctx.http, "Pong!").await;
+        } else if is_command(&s, "version").is_some() {
+            send_message(msg, &ctx.http, uiua::VERSION).await;
         } else if is_command(&s, "help").is_some() {
             send_message(msg, &ctx.http, HELP_MESSAGE).await;
         } else if let Some(code) = is_command(&s, "run") {

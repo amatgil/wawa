@@ -7,14 +7,17 @@ use base64::{Engine};
 
 use base64::engine::general_purpose::URL_SAFE;
 
-const DEFAULT_EXECUTION_LIMIT: Duration = Duration::from_secs(4);
+const DEFAULT_EXECUTION_LIMIT: Duration = Duration::from_secs(2);
 
 pub fn run_uiua(code: &str) -> String {
     if code.is_empty() {
         return "Cannot run empty code".into();
     }
-    let mut runtime = Uiua::with_safe_sys().with_execution_limit(DEFAULT_EXECUTION_LIMIT);
-    match runtime.run_str(code) {
+    let mut runtime = Uiua::with_safe_sys().with_execution_limit(DEFAULT_EXECUTION_LIMIT).with_;
+
+    let exp_code = &format!("# Experimental!\n{code}");
+
+    match runtime.run_str(exp_code) {
         Ok(_c) => {
             let r = runtime
                 .take_stack()
