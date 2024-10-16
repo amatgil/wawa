@@ -1,5 +1,3 @@
-mod uiuaizing;
-
 pub use std::sync::Arc;
 
 use dotenv;
@@ -9,11 +7,13 @@ use serenity::{
     model::channel::Message,
     prelude::*,
 };
-use uiua;
+use wawa::*;
 
 use std::collections::HashMap;
-use uiuaizing::{get_docs, highlight_code, run_uiua, format_and_get_pad_link};
+//use uiuaizing::{get_docs, highlight_code, run_uiua, format_and_get_pad_link};
 const HELP_MESSAGE: &str = r#"The help message has not been written yet!"#;
+
+
 
 struct Handler;
 
