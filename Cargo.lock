@@ -2007,6 +2007,7 @@ version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
  "dotenv",
+ "lazy_static",
  "serenity",
  "tokio",
  "uiua",

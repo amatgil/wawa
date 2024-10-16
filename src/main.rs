@@ -2,17 +2,11 @@ pub use std::sync::Arc;
 
 use dotenv;
 use serenity::{
-    all::{Http, Ready},
-    async_trait,
-    model::channel::Message,
-    prelude::*,
+    all::{Http, Ready}, async_trait, futures::future::BoxFuture, model::channel::Message, prelude::*
 };
 use wawa::*;
 
-use std::collections::HashMap;
-//use uiuaizing::{get_docs, highlight_code, run_uiua, format_and_get_pad_link};
-const HELP_MESSAGE: &str = r#"The help message has not been written yet!"#;
-
+use std::{collections::HashMap, fmt::Debug, future::Future, ops::{Add, Deref}};
 const SELF_ID: &str = "<@1295816766446108795>";
 
 struct Handler;
@@ -20,28 +14,31 @@ struct Handler;
 #[async_trait]
 impl EventHandler for Handler {
     async fn message(&self, ctx: Context, msg: Message) {
-        let s = msg.content.clone();
-        if is_command(&s, "ping").is_some() {
-            send_message(msg, &ctx.http, "Pong!").await;
-        } else if is_command(&s, "version").is_some() {
-            send_message(msg, &ctx.http, uiua::VERSION).await;
-        } else if is_command(&s, "help").is_some() {
-            send_message(msg, &ctx.http, HELP_MESSAGE).await;
-        } else if let Some(code) = is_command(&s, "run") {
-            let result = run_uiua(strip_triple_ticks(code.trim()));
-            send_message(msg, &ctx.http, &result).await;
-        } else if let Some(f) = is_command(&s, "docs") {
-            send_message(msg, &ctx.http, &get_docs(f.trim())).await;
-        } else if let Some(code) = is_command(&s, "high") {
-            send_message(msg, &ctx.http, &highlight_code(strip_triple_ticks(code.trim()))).await;
-        } else if let Some(code) = is_command(&s, "pad") {
-            send_message(msg, &ctx.http, &format_and_get_pad_link(code.trim())).await;
-        } else if let Some(unrec) = is_command(&s, "") {
-            let unrec = unrec.trim();
-            let shortened = &unrec[0..(30.min(unrec.len()))];
-            eprintln!("Someone sent an unrecognized command: '{shortened}'");
-            send_message(msg, &ctx.http, &format!("I don't recognize '{}' as a command :pensive:", shortened)).await;
+        //let commands: HashMap<Vec<&str>, &dyn Command> = HashMap::from([
+        //    (vec!["ping"], &handle_ping as &dyn Command),
+        //    (vec!["version"], &handle_version as &dyn Command),
+        //]);
+
+        let contents = msg.content.clone();
+        let s = contents.trim();
+        let Some(s) = s.strip_prefix("w!")
+            .or_else(||s.strip_prefix("wawa!"))
+            .or_else(||s.strip_prefix("{SELF_ID}")) else { return };
+
+        let space_idx = s.bytes().position(|c| c == b' ').unwrap_or_else(||s.len());
+
+        match &s[0..space_idx] {
+            "ping" => handle_ping(msg, ctx.http).await,
+            "ver" | "version" => handle_version(msg, ctx.http).await,
+            "help" => handle_help(msg, ctx.http).await,
+            "high" | "highlight" => handle_highlight(msg, ctx.http, &s[space_idx..].trim()).await,
+            "pad" => handle_pad(msg, ctx.http, &s[space_idx..].trim()).await,
+            "docs" => handle_docs(msg, ctx.http, &s[space_idx..].trim()).await,
+            "run" => handle_run(msg, ctx.http, &s[space_idx..].trim()).await,
+            unrec => handle_unrecognized(msg, ctx.http, unrec).await,
         }
+
+
     }
 
     async fn ready(&self, _: Context, ready: Ready) {
@@ -65,16 +62,6 @@ async fn main() {
     // Start listening for events by starting a single shard
     if let Err(why) = client.start().await {
         println!("Client error: {why:?}");
-    }
-}
-
-async fn send_message(msg: Message, http: &Arc<Http>, mut text: &str) {
-    if text.len() > 1000 {
-        text = "Message is way too long";
-    }
-    match msg.channel_id.say(http, text).await {
-        Ok(_) => {}
-        Err(why) => println!("Error sending message: {why:?}"),
     }
 }
 

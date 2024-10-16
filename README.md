@@ -58,3 +58,5 @@ incredibly limited, thank you discord for using the smallest number of colors po
 - [ ] Accept `w!cmd` syntax
 - [ ] Automate command dispatch
 - [ ] Add `tracing` (including reason, span, date, etc)
+- [ ] Accept single backtick code
+- [ ] Detect raw pad links and sent it wrapped (Check if the string contains `https://uiua.org/pad?src` and not `(https://uiua.org/pad?src`)
