@@ -137,7 +137,7 @@ pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
         }
     };
 
-    let finalized_text = format!("Source:\n{source}\nReturns:\n```\n{displayed_string}\n```");
+    let finalized_text = format!("Source:\n{source}\nReturns:\n{displayed_string}");
     if finalized_text.len() > 1000 {
         send_message(msg, &http, "Message is way too long").await;
         return;
