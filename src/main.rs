@@ -1,13 +1,18 @@
 pub use std::sync::Arc;
+use std::sync::LazyLock;
 
 use dotenv;
 use serenity::{all::Ready, async_trait, model::channel::Message, prelude::*};
 use tracing::{debug, event, info, instrument, trace, Level};
 use wawa::*;
 
-const SELF_AT: &str = "@wawa#0280";
-const SELF_ID: &str = "<@1295816766446108795>";
-const SELF_ROLE: &str = "<@&1295816766446108795>";
+const SELF_HANDLE: LazyLock<String> =
+    LazyLock::new(|| dotenv::var("BOT_SELF_HANDLE").unwrap_or_else(|_| "@wawa#0280".into()));
+const SELF_ID: LazyLock<u64> =
+    LazyLock::new(|| match dotenv::var("BOT_SELF_ID").map(|str| str.parse()) {
+        Ok(Ok(id)) => id,
+        _ => 1295816766446108795,
+    });
 
 struct Handler;
 
@@ -23,9 +28,9 @@ async fn handle_message(ctx: Context, msg: Message) {
     let commanded = trimmed
         .strip_prefix("w!")
         .or_else(|| trimmed.strip_prefix("wawa!"))
-        .or_else(|| trimmed.strip_prefix(SELF_ID))
-        .or_else(|| trimmed.strip_prefix(SELF_AT))
-        .or_else(|| trimmed.strip_prefix(SELF_ROLE));
+        .or_else(|| trimmed.strip_prefix(&format!("@{}", &*SELF_HANDLE)))
+        .or_else(|| trimmed.strip_prefix(&format!("<@{}>", &*SELF_ID)))
+        .or_else(|| trimmed.strip_prefix(&format!("<@&{}>", &*SELF_ID)));
 
     if let Some(s) = commanded {
         event!(Level::INFO, user = msg.author.name, body = ?s, "Processing body");
