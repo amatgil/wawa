@@ -29,7 +29,7 @@ impl EventHandler for Handler {
             let s = s.strip_prefix(" ").unwrap_or_else(|| s);
             let s = s.strip_prefix("\n").unwrap_or_else(|| s);
             let space_idx = s.bytes().position(|c| c == b' ').unwrap_or_else(||s.len());
-            match &s[0..space_idx] {
+            match s[0..space_idx].trim() {
                 "ping" => handle_ping(msg, ctx.http).await,
                 "ver" | "version" => handle_version(msg, ctx.http).await,
                 "help" => handle_help(msg, ctx.http).await,

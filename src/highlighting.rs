@@ -84,7 +84,7 @@ fn with_style(s: &str, ansi: AnsiState) -> String {
 /// Returns code surrounded by ANSI backticks to fake highlighting
 pub fn highlight_code(code: &str) -> String {
     let spans: Vec<_> = uiua::lsp::spans(code).0;
-    let r: String = spans
+    let mut r: String = spans
         .into_iter()
         .map(|s| {
             let text = &code[s.span.start.byte_pos as usize..s.span.end.byte_pos as usize];
@@ -140,8 +140,12 @@ pub fn highlight_code(code: &str) -> String {
         .collect();
 
     dbg!(&code);
-    let r = dbg!(format!("```ansi\n{}\n```", r));
-    println!("{r}");
+    if r == "" {
+        r = "<Empty stack>".into();
+    } else {
+        r = dbg!(format!("```ansi\n{}\n```", r));
+        println!("{r}");
+    }
     r
 }
 

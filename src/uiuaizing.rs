@@ -34,7 +34,11 @@ pub fn run_uiua(code: &str) -> String {
         dbg!(r);
         "Output contained triple backticks, which I disallow".to_string()
     } else {
-        format!("```\n{r}\n```")
+        if r == "" {
+            "<Empty stack>".to_string()
+        } else {
+            format!("```\n{r}\n```")
+        }
     }
 }
 
