@@ -167,10 +167,10 @@ pub fn highlight_code(code: &str) -> String {
         .collect();
 
     if r == "" {
-        trace!(code, "Output that got ran was empty");
+        trace!(code, "Result of highlighting was empty");
         r = "<Empty code>".into();
     } else {
-        trace!(code, "Code ran normally");
+        trace!(code, "Highlighted code successfully");
         r = format!("```ansi\n{}\n```", r);
         println!("{r}");
     }

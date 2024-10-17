@@ -68,19 +68,19 @@ pub async fn handle_help(msg: Message, http: Arc<Http>) {
 
 #[instrument(skip(msg, http))]
 pub async fn handle_fmt(msg: Message, http: Arc<Http>, code: &str) {
-    trace!("Running fmt handler");
+    trace!(user = msg.author.name, code, "Running fmt handler");
     send_message(msg, &http, &highlight_code(strip_triple_ticks(code.trim()))).await
 }
 
 #[instrument(skip(msg, http))]
 pub async fn handle_pad(msg: Message, http: Arc<Http>, code: &str) {
-    trace!("Running pad handler");
+    trace!(user = msg.author.name, code, "Running pad handler");
     send_message(msg, &http, &format_and_get_pad_link(code.trim())).await;
 }
 
 #[instrument(skip(msg, http))]
 pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
-    trace!("Running run handler");
+    trace!(user = msg.author.name, code, "Running run handler");
     let code = code.trim();
     let code = strip_triple_ticks(code);
     // TODO: strip single ticks as well
@@ -100,7 +100,7 @@ pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
 }
 #[instrument(skip(msg, http))]
 pub async fn handle_docs(msg: Message, http: Arc<Http>, code: &str) {
-    trace!("Running docs handler");
+    trace!(user = msg.author.name, code, "Running docs handler");
     if code.len() > *MAX_FN_LEN {
         debug!("Code was too long to show documentation");
         send_message(
@@ -116,6 +116,11 @@ pub async fn handle_docs(msg: Message, http: Arc<Http>, code: &str) {
 }
 #[instrument(skip(msg, http))]
 pub async fn handle_unrecognized(msg: Message, http: Arc<Http>, code: &str) {
+    trace!(
+        user = msg.author.name,
+        code,
+        "Handling unrecognized command"
+    );
     let unrec = code.trim();
     let shortened = unrec.chars().take(10).collect::<String>();
     eprintln!("Someone sent an unrecognized command: '{shortened}'");
@@ -130,7 +135,7 @@ pub async fn handle_unrecognized(msg: Message, http: Arc<Http>, code: &str) {
 // HELPERS
 
 pub async fn send_message(msg: Message, http: &Arc<Http>, mut text: &str) {
-    info!(text, user = ?msg.author.name, "Sending message");
+    info!(user = ?msg.author.name, text, "Sending message");
     if text.len() > 1000 {
         text = "Message is way too long";
     }

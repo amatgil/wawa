@@ -18,7 +18,7 @@ async fn handle_message(ctx: Context, msg: Message) {
     }
     let contents = msg.content_safe(ctx.cache).clone();
     let trimmed = contents.trim();
-    debug!(text = trimmed, "Starting to parse message");
+    trace!(text = trimmed, "Starting to parse message");
 
     let commanded = trimmed
         .strip_prefix("w!")
@@ -28,7 +28,7 @@ async fn handle_message(ctx: Context, msg: Message) {
         .or_else(|| trimmed.strip_prefix(SELF_ROLE));
 
     if let Some(s) = commanded {
-        event!(Level::INFO, body = s, "Processing command");
+        event!(Level::INFO, user = msg.author.name, body = ?s, "Processing body");
 
         let s = s.trim();
         let space_idx = s
