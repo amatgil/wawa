@@ -96,14 +96,14 @@ pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
     let source = highlight_code(code.trim());
     let result = run_uiua(strip_triple_ticks(code.trim()));
 
-    let mut displayed_string = String::new();
+    let mut output = String::new();
     let mut attachments = Vec::new();
     match result {
         Ok(result) => {
             for item in result {
                 match item {
                     OutputItem::Audio(blah) => {
-                        displayed_string
+                        output
                             .push_str(&format!("<attachment #{}: audio>\n", attachments.len() + 1));
                         attachments.push(CreateAttachment::bytes(
                             blah,
@@ -111,13 +111,30 @@ pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
                         ));
                     }
                     OutputItem::Misc(val) => {
-                        displayed_string.push_str(&val.show());
-                        displayed_string.push('\n');
+                        output.push_str(&val.show());
+                        output.push('\n');
                     }
                 }
             }
         }
-        Err(err) => displayed_string = err,
+        Err(err) => output = err,
+    };
+
+    let displayed_string = if output.contains("```") {
+        trace!(output, "Output contained triple backticks, denying");
+        "Output contained triple backticks, which I disallow".to_string()
+    } else {
+        if output == "" {
+            trace!("Resulting stack was empty");
+            "<Empty stack>".to_string()
+        } else {
+            trace!(
+                code,
+                output,
+                "Sending correctly formed result of running the code"
+            );
+            format!("```\n{output}\n```")
+        }
     };
 
     let finalized_text = format!("Source:\n{source}\nReturns:\n```\n{displayed_string}\n```");
