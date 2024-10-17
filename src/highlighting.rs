@@ -114,7 +114,7 @@ pub fn highlight_code(code: &str) -> String {
                 ),
                 SpanKind::Strand => with_style(text, AnsiState::just_color(AnsiColor::White)),
                 SpanKind::Ident { docs, original } => {
-                    "[wawa doesn't know what this [ident] is, please report]".to_string()
+                    "<ident>".to_string()
                 }
                 SpanKind::Label => with_style(
                     text,
@@ -132,11 +132,11 @@ pub fn highlight_code(code: &str) -> String {
                 SpanKind::Placeholder(p) => {
                     format!("[wawa doesn't know what {p} is, please report]")
                 }
-                SpanKind::Delimiter => "<I HAVEN'T WRITTEN DELIMITERS YET>".to_string(),
-                SpanKind::FuncDelim(sig, set_inv) => "<I HAVEN'T WRITTEN FUNCDELIMS YET".to_string(),
-                SpanKind::ImportSrc(src) => "<I HAVEN'T WRITTEN IMPORTS YET>".to_string(),
+                SpanKind::Delimiter => "<delim>".to_string(),
+                SpanKind::FuncDelim(sig, set_inv) => "<funcdelim>".to_string(),
+                SpanKind::ImportSrc(src) => "<import>".to_string(),
                 SpanKind::Subscript(prim, n) => format!("{n:?}"), // TODO: make it proper
-                SpanKind::Obverse(set_inv) => "<I HAVEN'T WRITTEN obverse YET>".to_string(),
+                SpanKind::Obverse(set_inv) => "<obverse>".to_string(),
             }
         })
         .collect();

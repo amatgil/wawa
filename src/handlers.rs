@@ -47,7 +47,7 @@ pub async fn handle_pad(msg: Message, http: Arc<Http>, code: &str) {
     send_message(msg, &http, &format_and_get_pad_link(code.trim())).await;
 }
 pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
-    let mut code = code.trim();
+    let code = code.trim();
     let code = strip_triple_ticks(code);
     // TODO: strip single ticks as well
 
@@ -55,6 +55,7 @@ pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
 
     let source = highlight_code(code.trim());
     let result = run_uiua(strip_triple_ticks(code.trim()));
+
     let finalized = format!("Source:\n{source}\nReturns:\n{result}");
     send_message(msg, &http, &finalized).await
 }

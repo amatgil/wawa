@@ -17,24 +17,24 @@ pub fn run_uiua(code: &str) -> String {
 
     let exp_code = &format!("# Experimental!\n{code}");
 
-    match runtime.run_str(exp_code) {
+    let r = match runtime.run_str(exp_code) {
         Ok(_c) => {
-            let r = runtime
+            runtime
                 .take_stack()
                 .into_iter()
                 .take(10)
                 .map(|v| v.show())
                 .collect::<Vec<String>>()
-                .join("\n");
-            format!("```\n{r}\n```")
+                .join("\n")
         }
-        Err(e) => format!(
-            "Error while running:
-```
-{e}
-```
-"
-        ),
+        Err(e) => format!("Error while running: {e} "),
+    };
+
+    if r.contains("```") {
+        dbg!(r);
+        "Output contained triple backticks, which I disallow".to_string()
+    } else {
+        format!("```\n{r}\n```")
     }
 }
 
