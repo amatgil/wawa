@@ -43,7 +43,10 @@ pub fn run_uiua(code: &str) -> String {
 }
 
 pub fn get_docs(f: &str) -> String {
-    match Primitive::from_format_name(f) {
+    match Primitive::from_format_name(f)
+        .or_else(|| Primitive::from_glyph(f.chars().next().unwrap_or_default()))
+        .or_else(|| Primitive::from_name(f))
+    {
         Some(docs) => {
             let d = docs
                 .doc()
