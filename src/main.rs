@@ -53,7 +53,7 @@ async fn handle_message(ctx: Context, msg: Message) {
         if !vs.is_empty() {
             let link = &vs[0];
             dbg!("FOUND PAD LINK");
-            let response = format!("You've sent a raw pad link! Please use markdown links next time (like [this](<link>)). For now, here is [the link you sent]({link})");
+            let response = format!("You've sent a raw pad link! Please use markdown links next time (like `[this](<link>)`). For now, here is [the link you sent]({link})");
             send_message(msg, &ctx.http, &response).await;
         }
     }
