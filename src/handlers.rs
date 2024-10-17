@@ -3,6 +3,7 @@ use std::sync::Arc;
 use crate::*;
 use serenity::all::{Http, Message};
 use std::sync::LazyLock;
+use tracing::{debug, info, instrument, trace};
 
 const HELP_MESSAGE: &str = r#"# wawa
 Your friendly neighbourhood uiua bot!
@@ -30,34 +31,56 @@ Examples:
 Ping <@328851809357791232> for any questions or if you want the version to get bumped
 "#;
 
-static MAX_FN_LEN: LazyLock<usize> = LazyLock::new(||{
+static MAX_FN_LEN: LazyLock<usize> = LazyLock::new(|| {
     uiua::PrimClass::all()
         .map(|pc| pc.primitives())
         .flatten()
-        .map(|p| p.names().text.chars().filter(|c| !c.is_whitespace()).collect::<String>().len())
+        .map(|p| {
+            p.names()
+                .text
+                .chars()
+                .filter(|c| !c.is_whitespace())
+                .collect::<String>()
+                .len()
+        })
         .max()
         .unwrap() // There _are_ primitives
 });
 
 // HANDLERS
+#[instrument(skip_all)]
 pub async fn handle_ping(msg: Message, http: Arc<Http>) {
+    trace!("Running ping handler");
     send_message(msg, &http, "Pong!").await
 }
+
+#[instrument(skip_all)]
 pub async fn handle_version(msg: Message, http: Arc<Http>) {
-    //msg.allowed_mention //TODO: forbid pinging directly
+    trace!("Running version handler");
     send_message(msg, &http, uiua::VERSION).await
 }
 
+#[instrument(skip_all)]
 pub async fn handle_help(msg: Message, http: Arc<Http>) {
+    trace!("Running help handler");
     send_message(msg, &http, HELP_MESSAGE).await
 }
+
+#[instrument(skip(msg, http))]
 pub async fn handle_fmt(msg: Message, http: Arc<Http>, code: &str) {
+    trace!("Running fmt handler");
     send_message(msg, &http, &highlight_code(strip_triple_ticks(code.trim()))).await
 }
+
+#[instrument(skip(msg, http))]
 pub async fn handle_pad(msg: Message, http: Arc<Http>, code: &str) {
+    trace!("Running pad handler");
     send_message(msg, &http, &format_and_get_pad_link(code.trim())).await;
 }
+
+#[instrument(skip(msg, http))]
 pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
+    trace!("Running run handler");
     let code = code.trim();
     let code = strip_triple_ticks(code);
     // TODO: strip single ticks as well
@@ -75,23 +98,39 @@ pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
     let finalized = format!("Source:\n{source}\nReturns:\n{result}");
     send_message(msg, &http, &finalized).await
 }
+#[instrument(skip(msg, http))]
 pub async fn handle_docs(msg: Message, http: Arc<Http>, code: &str) {
+    trace!("Running docs handler");
     if code.len() > *MAX_FN_LEN {
-        send_message(msg, &http, &format!("Functions don't have more than {} chars", *MAX_FN_LEN)).await
+        debug!("Code was too long to show documentation");
+        send_message(
+            msg,
+            &http,
+            &format!("Functions don't have more than {} chars", *MAX_FN_LEN),
+        )
+        .await
     } else {
+        trace!(code, "Sending back documentation");
         send_message(msg, &http, &get_docs(code.trim())).await
     }
 }
+#[instrument(skip(msg, http))]
 pub async fn handle_unrecognized(msg: Message, http: Arc<Http>, code: &str) {
     let unrec = code.trim();
     let shortened = unrec.chars().take(10).collect::<String>();
     eprintln!("Someone sent an unrecognized command: '{shortened}'");
-    send_message(msg, &http, &format!("I don't recognize '{}' as a command :pensive:", shortened)).await;
+    send_message(
+        msg,
+        &http,
+        &format!("I don't recognize '{}' as a command :pensive:", shortened),
+    )
+    .await;
 }
 
 // HELPERS
 
 pub async fn send_message(msg: Message, http: &Arc<Http>, mut text: &str) {
+    info!(text, user = ?msg.author.name, "Sending message");
     if text.len() > 1000 {
         text = "Message is way too long";
     }

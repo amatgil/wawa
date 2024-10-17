@@ -58,8 +58,9 @@ incredibly limited, thank you discord for using the smallest number of colors po
 - [X] Accept `w!cmd` syntax
 - [X] Automate command dispatch
 - [ ] Add `tracing` (including reason, span, date, etc)
-- [ ] Detect raw pad links and sent it wrapped (Check if the string contains `https://uiua.org/pad?src` and not `(https://uiua.org/pad?src`)
+- [X] Detect raw pad links and sent it wrapped (Check if the string contains `https://uiua.org/pad?src` and not `(https://uiua.org/pad?src`)
 - [ ] Handle single backticks by checking if the last char is a backtick (can't negate an empty stack). same with three
 - [ ] Slash commands (example 5)
 - [ ] `w!docs changelog`
 - [ ] Report text in embed for larger char limits
+- [ ] Fix internal link (like in `under`'s docs), probably by regex subst

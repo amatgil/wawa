@@ -1,3 +1,4 @@
+use tracing::trace;
 use uiua::{PrimClass, PrimDocFragment, PrimDocLine, Primitive, Signature, SpanKind, Uiua};
 
 #[allow(dead_code)]
@@ -83,12 +84,17 @@ fn with_style(s: &str, ansi: AnsiState) -> String {
 
 /// Returns code surrounded by ANSI backticks to fake highlighting
 pub fn highlight_code(code: &str) -> String {
-    let spans: Vec<_> = dbg!(uiua::lsp::spans(code)).0;
+    let spans: Vec<_> = uiua::lsp::spans(code).0;
     let mut last_cursor: u32 = 0;
     let mut r: String = spans
         .into_iter()
         .map(|s| {
-            let newlines_skipped = code.bytes().skip(last_cursor as usize).take(s.span.start.byte_pos as usize - last_cursor as usize).filter(|c| *c == b'\n').count();
+            let newlines_skipped = code
+                .bytes()
+                .skip(last_cursor as usize)
+                .take(s.span.start.byte_pos as usize - last_cursor as usize)
+                .filter(|c| *c == b'\n')
+                .count();
             let text = &code[s.span.start.byte_pos as usize..s.span.end.byte_pos as usize];
             last_cursor = s.span.end.byte_pos;
 
@@ -132,7 +138,7 @@ pub fn highlight_code(code: &str) -> String {
                         ..Default::default()
                     },
                 ),
-                SpanKind::Signature =>  with_style(text, AnsiState::default()),
+                SpanKind::Signature => with_style(text, AnsiState::default()),
                 SpanKind::Whitespace => with_style(text, AnsiState::default()),
                 SpanKind::Placeholder(..) => with_style(text, AnsiState::default()),
                 SpanKind::Delimiter => with_style(text, AnsiState::default()),
@@ -150,15 +156,22 @@ pub fn highlight_code(code: &str) -> String {
                 SpanKind::Subscript(_, None) => with_style(text, AnsiState::default()),
                 SpanKind::Obverse(..) => with_style(text, AnsiState::default()),
             };
-            format!("{}{}", std::iter::repeat('\n').take(newlines_skipped).collect::<String>(), fmtd)
+            format!(
+                "{}{}",
+                std::iter::repeat('\n')
+                    .take(newlines_skipped)
+                    .collect::<String>(),
+                fmtd
+            )
         })
         .collect();
 
-    dbg!(&code);
     if r == "" {
+        trace!(code, "Output that got ran was empty");
         r = "<Empty code>".into();
     } else {
-        r = dbg!(format!("```ansi\n{}\n```", r));
+        trace!(code, "Code ran normally");
+        r = format!("```ansi\n{}\n```", r);
         println!("{r}");
     }
     r

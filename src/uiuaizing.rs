@@ -114,7 +114,7 @@ fn print_docs(line: &PrimDocLine) -> String {
             };
             let text = format!("{}\n# {}", e.input(), out);
 
-            format!("{}",highlight_code(&text))
+            format!("{}", highlight_code(&text))
         }
     }
 }
