@@ -116,7 +116,7 @@ pub fn highlight_code(code: &str) -> String {
                     },
                 ),
                 SpanKind::Strand => with_style(text, AnsiState::just_color(AnsiColor::White)),
-                SpanKind::Ident { docs, original } => "<ident>".to_string(),
+                SpanKind::Ident { .. } => with_style(text, AnsiState::default()),
                 SpanKind::Label => with_style(
                     text,
                     AnsiState {
@@ -128,12 +128,12 @@ pub fn highlight_code(code: &str) -> String {
                         ..Default::default()
                     },
                 ),
-                SpanKind::Signature => with_style(text, AnsiState::just_color(AnsiColor::White)),
-                SpanKind::Whitespace => with_style(text, AnsiState::just_color(AnsiColor::White)),
-                SpanKind::Placeholder(p) => format!("<placeholder>"),
-                SpanKind::Delimiter => "<delim>".to_string(),
-                SpanKind::FuncDelim(sig, set_inv) => "<funcdelim>".to_string(),
-                SpanKind::ImportSrc(src) => "<import>".to_string(),
+                SpanKind::Signature =>  with_style(text, AnsiState::default()),
+                SpanKind::Whitespace => with_style(text, AnsiState::default()),
+                SpanKind::Placeholder(..) => with_style(text, AnsiState::default()),
+                SpanKind::Delimiter => with_style(text, AnsiState::default()),
+                SpanKind::FuncDelim(..) => with_style(text, AnsiState::default()),
+                SpanKind::ImportSrc(..) => with_style(text, AnsiState::default()),
                 SpanKind::Subscript(prim, Some(x)) => {
                     let subs_text: String = (x.to_string().chars())
                         .map(|c| uiua::SUBSCRIPT_NUMS[(c as u32 as u8 - b'0') as usize])
@@ -143,8 +143,8 @@ pub fn highlight_code(code: &str) -> String {
                         .unwrap_or_default();
                     with_style(&subs_text, style)
                 }
-                SpanKind::Subscript(prim, None) => String::new(),
-                SpanKind::Obverse(set_inv) => "<obverse>".to_string(),
+                SpanKind::Subscript(_, None) => with_style(text, AnsiState::default()),
+                SpanKind::Obverse(..) => with_style(text, AnsiState::default()),
             }
         })
         .collect();

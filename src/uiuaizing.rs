@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use base64::Engine;
 use uiua::format::*;
-use uiua::{PrimClass, PrimDocFragment, PrimDocLine, Primitive, Signature, SpanKind, Uiua};
+use uiua::{PrimClass, PrimDocFragment, PrimDocLine, Primitive, Signature, SpanKind, Uiua, AsciiToken};
 use crate::*;
 
 use base64::engine::general_purpose::URL_SAFE;
@@ -52,7 +52,7 @@ pub fn get_docs(f: &str) -> String {
                 .doc()
                 .lines
                 .iter()
-                .take(4)
+                .take(5)
                 .map(print_docs)
                 .collect::<Vec<String>>()
                 .join("\n");
