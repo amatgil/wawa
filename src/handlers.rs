@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use crate::*;
-use serenity::all::{Http, Message};
+use serenity::all::{Builder, CreateAllowedMentions, CreateMessage, Embed, Http, Message};
 use std::sync::LazyLock;
-use tracing::{debug, info, instrument, trace};
+use tracing::{debug, error, info, instrument, trace};
 
 const HELP_MESSAGE: &str = r#"# wawa
 Your friendly neighbourhood uiua bot!
@@ -135,6 +135,7 @@ pub async fn handle_unrecognized(msg: Message, http: Arc<Http>, code: &str) {
 
 // HELPERS
 
+#[instrument(skip_all)]
 pub async fn send_message(msg: Message, http: &Arc<Http>, mut text: &str) {
     info!(user = ?msg.author.name, text, "Sending message");
     if text.len() > 1000 {
@@ -142,7 +143,31 @@ pub async fn send_message(msg: Message, http: &Arc<Http>, mut text: &str) {
     }
     match msg.reply(http, text).await {
         Ok(_) => {}
-        Err(e) => eprintln!("Error sending message: {e}"),
+        Err(e) => error!(reason = ?e, user = msg.author.name, "Error while sending"),
+    };
+}
+
+#[instrument(skip_all)]
+pub async fn send_embed(msg: Message, http: &Arc<Http>, mut text: &str, embed: Embed) {
+    info!(user = ?msg.author.name, text, "Sending message that contains embed");
+    if text.len() > 1000 {
+        text = "Message is way too long";
+        send_message(msg, http, text).await;
+        return;
+    }
+    let builder = CreateMessage::new()
+        .content(text)
+        .embed(embed.into())
+        .reference_message(&msg)
+        .allowed_mentions(CreateAllowedMentions::default() /* Nobody */);
+
+    match msg.channel_id.send_message(http, builder).await {
+        Ok(_) => {}
+        Err(e) => error!(
+            reason = ?e,
+            user = msg.author.name,
+            "Error while sending with embed"
+        ),
     };
 }
 

@@ -28,7 +28,7 @@ async fn handle_message(ctx: Context, msg: Message) {
         .or_else(|| trimmed.strip_prefix(SELF_ROLE));
 
     if let Some(s) = commanded {
-        event!(Level::INFO, user = msg.author.name, body = ?s, "Processing body");
+        info!(user = msg.author.name, body = ?s, "Processing body");
 
         let s = s.trim();
         let space_idx = s
@@ -54,6 +54,11 @@ async fn handle_message(ctx: Context, msg: Message) {
         trace!("Checking for pad link");
         let vs = extract_raw_pad_link(trimmed);
         if !vs.is_empty() {
+            trace!(
+                user = msg.author.name,
+                link = vs[0],
+                "Link without markdown detected"
+            );
             let link = &vs[0];
             info!(author = ?msg.author, "Found a pad link");
             let response = format!("You've sent a raw pad link! Please use markdown links next time (like `[this](<link>)`). For now, here is [the link you sent]({link})");
