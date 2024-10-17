@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::*;
-use serenity::all::{Http, Message};
+use serenity::all::{CreateAllowedMentions, CreateAttachment, CreateMessage, Http, Message};
 use std::sync::LazyLock;
 use tracing::{debug, info, instrument, trace};
 
@@ -96,8 +96,44 @@ pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
     let source = highlight_code(code.trim());
     let result = run_uiua(strip_triple_ticks(code.trim()));
 
-    let finalized = format!("Source:\n{source}\nReturns:\n{result}");
-    send_message(msg, &http, &finalized).await
+    let mut displayed_string = String::new();
+    let mut attachments = Vec::new();
+    match result {
+        Ok(result) => {
+            for item in result {
+                match item {
+                    OutputItem::Audio(blah) => {
+                        displayed_string
+                            .push_str(&format!("<attachment #{}: audio>\n", attachments.len() + 1));
+                        attachments.push(CreateAttachment::bytes(
+                            blah,
+                            format!("audio_{}.ogg", attachments.len()),
+                        ));
+                    }
+                    OutputItem::Misc(val) => {
+                        displayed_string.push_str(&val.show());
+                        displayed_string.push('\n');
+                    }
+                }
+            }
+        }
+        Err(err) => displayed_string = err,
+    };
+
+    let finalized_text = format!("Source:\n{source}\nReturns:\n```\n{displayed_string}\n```");
+    if finalized_text.len() > 1000 {
+        send_message(msg, &http, "Message is way too long").await;
+        return;
+    }
+
+    send_message_advanced(
+        msg,
+        &http,
+        CreateMessage::new()
+            .content(finalized_text)
+            .add_files(attachments),
+    )
+    .await
 }
 #[instrument(skip(msg, http))]
 pub async fn handle_docs(msg: Message, http: Arc<Http>, code: &str) {
@@ -141,6 +177,16 @@ pub async fn send_message(msg: Message, http: &Arc<Http>, mut text: &str) {
         text = "Message is way too long";
     }
     match msg.reply(http, text).await {
+        Ok(_) => {}
+        Err(e) => eprintln!("Error sending message: {e}"),
+    };
+}
+// TODO rename
+pub async fn send_message_advanced(msg: Message, http: &Arc<Http>, builder: CreateMessage) {
+    let builder = builder
+        .reference_message(&msg)
+        .allowed_mentions(CreateAllowedMentions::new().replied_user(false));
+    match msg.channel_id.send_message(http, builder).await {
         Ok(_) => {}
         Err(e) => eprintln!("Error sending message: {e}"),
     };

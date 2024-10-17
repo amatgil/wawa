@@ -10,6 +10,8 @@ use base64::engine::general_purpose::URL_SAFE;
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
+mod encode;
+
 const DEFAULT_EXECUTION_LIMIT: Duration = Duration::from_secs(2);
 const EMOJI_IDS: &'static str = include_str!("../assets/glyphlist.txt");
 static EMOJI_MAP: LazyLock<HashMap<&str, &str>> = LazyLock::new(|| {
@@ -26,45 +28,76 @@ static EMOJI_MAP: LazyLock<HashMap<&str, &str>> = LazyLock::new(|| {
         .collect::<HashMap<&str, &str>>()
 });
 
-pub fn run_uiua(code: &str) -> String {
+pub enum OutputItem {
+    /// Audio, containing encoded OGG Vorbis bytes.
+    Audio(Box<[u8]>),
+    /// Miscellaneous value.
+    Misc(uiua::Value),
+    // TODO: images, gifs, you know the drill
+}
+
+impl From<uiua::Value> for OutputItem {
+    fn from(value: uiua::Value) -> Self {
+        use uiua::Value;
+
+        fn try_from_ogg(value: &Value) -> Result<OutputItem, Box<dyn std::error::Error>> {
+            let channels = encode::value_to_audio_channels(&value)?;
+            let mut sink = Vec::new();
+            let mut encoder = vorbis_rs::VorbisEncoderBuilder::new(
+                std::num::NonZeroU32::new(44100).ok_or("unreachable")?,
+                std::num::NonZeroU8::new(channels.len() as u8).ok_or("unreachable")?,
+                &mut sink,
+            )?
+            .build()?;
+            encoder.encode_audio_block(channels)?;
+            encoder.finish()?;
+            Ok(OutputItem::Audio(sink.into_boxed_slice()))
+        }
+        if let Ok(this) = try_from_ogg(&value) {
+            return this;
+        }
+
+        Self::Misc(value)
+    }
+}
+
+pub fn run_uiua(code: &str) -> Result<Vec<OutputItem>, String> {
     trace!(code, "Starting to execute uiua code");
     if code.is_empty() {
-        return "Cannot run empty code".into();
+        return Err("Cannot run empty code".into());
     }
 
     let mut runtime = Uiua::with_safe_sys().with_execution_limit(DEFAULT_EXECUTION_LIMIT);
     let exp_code = &format!("# Experimental!\n{code}");
+
     let r = match runtime.run_str(exp_code) {
-        Ok(_c) => {
-            trace!(code, "Code ran successfully");
-            runtime
-                .take_stack()
-                .into_iter()
-                .take(10)
-                .map(|v| v.show())
-                .collect::<Vec<String>>()
-                .join("\n")
-        }
+        Ok(_c) => runtime
+            .take_stack()
+            .into_iter()
+            .take(10)
+            .map(|v| v.show())
+            .collect::<Vec<String>>()
+            .join("\n"),
         Err(e) => {
-            trace!(code, "Code ran UNsuccessfully");
             format!("Error while running: {e} ")
         }
     };
 
-    if r.contains("```") {
-        trace!(r, "Ouput contained triple backticks, denying");
-        "Output contained triple backticks, which I disallow".to_string()
-    } else {
-        if r == "" {
-            trace!("Resulting stack was empty");
-            "<Empty stack>".to_string()
-        } else {
-            trace!(
-                code,
-                r,
-                "Sending correctly formed result of running the code"
-            );
-            format!("```\n{r}\n```")
+    match runtime.run_str(exp_code) {
+        Ok(_c) => {
+            trace!(code, "Code ran successfully");
+            let mut stack = runtime.take_stack();
+
+            const MAX_NUM_VALUES: usize = 10;
+            if stack.len() > MAX_NUM_VALUES {
+                stack.truncate(MAX_NUM_VALUES);
+            }
+
+            Ok(stack.into_iter().map(|val| val.into()).collect())
+        }
+        Err(e) => {
+            trace!(code, "Code ran Unsuccessfully");
+            return Err(format!("Error while running: {e} "));
         }
     }
 }

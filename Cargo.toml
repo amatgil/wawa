@@ -15,3 +15,6 @@ tokio = { version = "1.21.2", features = ["macros", "rt-multi-thread"] }
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
 uiua = { version = "0.13.0-rc.2", default-features = false }
+
+vorbis_rs = "0.5.4"
+ogg = "0.9.1"
