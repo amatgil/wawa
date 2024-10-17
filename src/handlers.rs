@@ -7,6 +7,8 @@ use serenity::all::{
 use std::sync::LazyLock;
 use tracing::{debug, error, info, instrument, trace};
 
+const MAX_MSG_LEN: usize = 1700;
+
 const HELP_MESSAGE: &str = r#"# wawa
 Your friendly neighbourhood uiua bot!
 
@@ -90,8 +92,13 @@ pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
     //let code = strip_single_ticks(code);
 
     if code.contains("```") {
-        let text = format!("Input contained triple backticks, which I disallow");
-        send_message(msg, &http, &text).await;
+        info!(code = %code, "Input contained backticks, disallowing");
+        send_message(
+            msg,
+            &http,
+            "Input contained triple backticks, which I disallow",
+        )
+        .await;
         return;
     }
 
@@ -122,25 +129,25 @@ pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
         Err(err) => output = err,
     };
 
-    let displayed_string = if output.contains("```") {
-        trace!(output, "Output contained triple backticks, denying");
+    let result = if output.contains("```") {
+        info!(?output, "Output contained triple backticks, denying");
         "Output contained triple backticks, which I disallow".to_string()
+    } else if output == "" {
+        trace!("Resulting stack was empty");
+        "<Empty stack>".to_string()
     } else {
-        if output == "" {
-            trace!("Resulting stack was empty");
-            "<Empty stack>".to_string()
-        } else {
-            trace!(
-                code,
-                output,
-                "Sending correctly formed result of running the code"
-            );
-            format!("```\n{output}\n```")
-        }
+        trace!(
+            ?code,
+            ?output,
+            "Sending correctly formed result of running the code"
+        );
+        format!("```\n{output}\n```")
     };
 
-    let finalized_text = format!("Source:\n{source}\nReturns:\n{displayed_string}");
-    if finalized_text.len() > 1000 {
+    let finalized_text = format!("Source:\n{source}\nReturns:\n{result}");
+
+    if finalized_text.len() > MAX_MSG_LEN {
+        debug!(text = ?&finalized_text.chars().take(200).collect::<String>(), "Final message was too long");
         send_message(msg, &http, "Message is way too long").await;
         return;
     }
@@ -193,7 +200,7 @@ pub async fn handle_unrecognized(msg: Message, http: Arc<Http>, code: &str) {
 #[instrument(skip_all)]
 pub async fn send_message(msg: Message, http: &Arc<Http>, mut text: &str) {
     info!(user = ?msg.author.name, text, "Sending message");
-    if text.len() > 1000 {
+    if text.len() > MAX_MSG_LEN {
         text = "Message is way too long";
     }
     match msg.reply(http, text).await {
@@ -205,7 +212,7 @@ pub async fn send_message(msg: Message, http: &Arc<Http>, mut text: &str) {
 #[instrument(skip_all)]
 pub async fn send_embed(msg: Message, http: &Arc<Http>, mut text: &str, embed: Embed) {
     info!(user = ?msg.author.name, text, "Sending message that contains embed");
-    if text.len() > 1000 {
+    if text.len() > MAX_MSG_LEN {
         text = "Message is way too long";
         send_message(msg, http, text).await;
         return;
