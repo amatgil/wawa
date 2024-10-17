@@ -34,7 +34,7 @@ static MAX_FN_LEN: LazyLock<usize> = LazyLock::new(||{
     uiua::PrimClass::all()
         .map(|pc| pc.primitives())
         .flatten()
-        .map(|p| dbg!(p.names().text).len())
+        .map(|p| dbg!(p.names().text.chars().filter(|c| !c.is_whitespace()).collect::<String>()).len())
         .max()
         .unwrap() // There _are_ primitives
 });
@@ -84,7 +84,7 @@ pub async fn handle_docs(msg: Message, http: Arc<Http>, code: &str) {
 }
 pub async fn handle_unrecognized(msg: Message, http: Arc<Http>, code: &str) {
     let unrec = code.trim();
-    let shortened = &unrec[0..(20.min(unrec.len()))];
+    let shortened = unrec.chars().take(10).collect::<String>();
     eprintln!("Someone sent an unrecognized command: '{shortened}'");
     send_message(msg, &http, &format!("I don't recognize '{}' as a command :pensive:", shortened)).await;
 }

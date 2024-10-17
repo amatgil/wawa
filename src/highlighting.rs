@@ -91,11 +91,14 @@ pub fn highlight_code(code: &str) -> String {
             match s.value {
                 SpanKind::Primitive(p, sig) => print_prim(p, sig),
                 SpanKind::String => with_style(text, AnsiState::just_color(AnsiColor::Cyan)),
-                SpanKind::Number => with_style(text, AnsiState {
-                    color: AnsiColor::Red,
-                    bold: true,
-                    ..Default::default()
-                }),
+                SpanKind::Number => with_style(
+                    text,
+                    AnsiState {
+                        color: AnsiColor::Red,
+                        bold: true,
+                        ..Default::default()
+                    },
+                ),
                 SpanKind::Comment => with_style(
                     text,
                     AnsiState {
@@ -113,9 +116,7 @@ pub fn highlight_code(code: &str) -> String {
                     },
                 ),
                 SpanKind::Strand => with_style(text, AnsiState::just_color(AnsiColor::White)),
-                SpanKind::Ident { docs, original } => {
-                    "<ident>".to_string()
-                }
+                SpanKind::Ident { docs, original } => "<ident>".to_string(),
                 SpanKind::Label => with_style(
                     text,
                     AnsiState {
@@ -133,7 +134,16 @@ pub fn highlight_code(code: &str) -> String {
                 SpanKind::Delimiter => "<delim>".to_string(),
                 SpanKind::FuncDelim(sig, set_inv) => "<funcdelim>".to_string(),
                 SpanKind::ImportSrc(src) => "<import>".to_string(),
-                SpanKind::Subscript(prim, n) => format!("{n:?}"), // TODO: make it proper
+                SpanKind::Subscript(prim, Some(x)) => {
+                    let subs_text: String = (x.to_string().chars())
+                        .map(|c| uiua::SUBSCRIPT_NUMS[(c as u32 as u8 - b'0') as usize])
+                        .collect();
+                    let style = prim
+                        .map(|p| style_of_prim(p, p.signature()))
+                        .unwrap_or_default();
+                    with_style(&subs_text, style)
+                }
+                SpanKind::Subscript(prim, None) => String::new(),
                 SpanKind::Obverse(set_inv) => "<obverse>".to_string(),
             }
         })
@@ -149,8 +159,7 @@ pub fn highlight_code(code: &str) -> String {
     r
 }
 
-
-fn print_prim(prim: Primitive, sig: Option<Signature>) -> String {
+fn style_of_prim(prim: Primitive, sig: Option<Signature>) -> AnsiState {
     let noadic = AnsiState::just_color(AnsiColor::Red);
     let monadic = AnsiState {
         color: AnsiColor::Green,
@@ -191,6 +200,12 @@ fn print_prim(prim: Primitive, sig: Option<Signature>) -> String {
         }
     }
     .unwrap_or(AnsiState::default());
+
+    style
+}
+
+fn print_prim(prim: Primitive, sig: Option<Signature>) -> String {
+    let style = style_of_prim(prim, sig);
 
     with_style(&prim.to_string(), style)
 }
