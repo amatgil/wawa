@@ -16,25 +16,37 @@ struct Handler;
 impl EventHandler for Handler {
     async fn message(&self, ctx: Context, msg: Message) {
         let contents = msg.content_safe(ctx.cache).clone();
-        let s = contents.trim();
-        let Some(s) = s.strip_prefix("w!")
-            .or_else(||s.strip_prefix("wawa!"))
-            .or_else(||s.strip_prefix(&format!("{SELF_ID}"))
-            .or_else(||s.strip_prefix(&format!("{SELF_ROLE}")))) else { return };
+        let trimmed = contents.trim();
+        dbg!(&trimmed);
 
-        let s = s.strip_prefix(" ").unwrap_or_else(|| s);
+        let commanded = trimmed.strip_prefix("w!")
+            .or_else(||trimmed.strip_prefix("wawa!"))
+            .or_else(||trimmed.strip_prefix(&format!("{SELF_ID}"))
+            .or_else(||trimmed.strip_prefix(&format!("{SELF_ROLE}"))));
 
-        let space_idx = s.bytes().position(|c| c == b' ').unwrap_or_else(||s.len());
-
-        match &s[0..space_idx] {
-            "ping" => handle_ping(msg, ctx.http).await,
-            "ver" | "version" => handle_version(msg, ctx.http).await,
-            "help" => handle_help(msg, ctx.http).await,
-            "fmt" => handle_fmt(msg, ctx.http, &s[space_idx..].trim()).await,
-            "pad" => handle_pad(msg, ctx.http, &s[space_idx..].trim()).await,
-            "docs" => handle_docs(msg, ctx.http, &s[space_idx..].trim()).await,
-            "run" => handle_run(msg, ctx.http, &s[space_idx..].trim()).await,
-            unrec => handle_unrecognized(msg, ctx.http, unrec).await,
+        if let Some(s) = commanded {
+            let s = s.strip_prefix(" ").unwrap_or_else(|| s);
+            let space_idx = s.bytes().position(|c| c == b' ').unwrap_or_else(||s.len());
+            match &s[0..space_idx] {
+                "ping" => handle_ping(msg, ctx.http).await,
+                "ver" | "version" => handle_version(msg, ctx.http).await,
+                "help" => handle_help(msg, ctx.http).await,
+                "fmt" => handle_fmt(msg, ctx.http, &s[space_idx..].trim()).await,
+                "pad" => handle_pad(msg, ctx.http, &s[space_idx..].trim()).await,
+                "docs" => handle_docs(msg, ctx.http, &s[space_idx..].trim()).await,
+                "run" => handle_run(msg, ctx.http, &s[space_idx..].trim()).await,
+                unrec => handle_unrecognized(msg, ctx.http, unrec).await,
+            }
+        } else { // We're not a command, but we can check if the message contains an un-markdown'd link
+            eprintln!("Checkign for pad link");
+            /*
+            if has_raw_pad_link(&msg.content) {
+                eprintln!("FOUND PAD LINK");
+                let link = "<link go here>";
+                let response = format!("You seem to have sent a raw pad link. Please use markdown links next time (like [this](<link>) next time). For now, here is [the link you sent]({link})");
+                send_message(msg, &ctx.http, &response).await;
+            }
+            */
         }
 
 

@@ -132,11 +132,11 @@ pub fn highlight_code(code: &str) -> String {
                 SpanKind::Placeholder(p) => {
                     format!("[wawa doesn't know what {p} is, please report]")
                 }
-                SpanKind::Delimiter => todo!(),
-                SpanKind::FuncDelim(sig, set_inv) => todo!(),
-                SpanKind::ImportSrc(src) => todo!(),
-                SpanKind::Subscript(prim, n) => todo!(),
-                SpanKind::Obverse(set_inv) => todo!(),
+                SpanKind::Delimiter => "<I HAVEN'T WRITTEN DELIMITERS YET>".to_string(),
+                SpanKind::FuncDelim(sig, set_inv) => "<I HAVEN'T WRITTEN FUNCDELIMS YET".to_string(),
+                SpanKind::ImportSrc(src) => "<I HAVEN'T WRITTEN IMPORTS YET>".to_string(),
+                SpanKind::Subscript(prim, n) => format!("{n:?}"), // TODO: make it proper
+                SpanKind::Obverse(set_inv) => "<I HAVEN'T WRITTEN obverse YET>".to_string(),
             }
         })
         .collect();
