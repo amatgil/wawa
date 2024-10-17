@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
 use crate::*;
-use serenity::all::{Builder, CreateAllowedMentions, CreateMessage, Embed, Http, Message};
+use serenity::all::{
+    Builder, CreateAllowedMentions, CreateAttachment, CreateMessage, Embed, Http, Message,
+};
 use std::sync::LazyLock;
 use tracing::{debug, error, info, instrument, trace};
 
@@ -96,8 +98,61 @@ pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
     let source = highlight_code(code.trim());
     let result = run_uiua(strip_triple_ticks(code.trim()));
 
-    let finalized = format!("Source:\n{source}\nReturns:\n{result}");
-    send_message(msg, &http, &finalized).await
+    let mut output = String::new();
+    let mut attachments = Vec::new();
+    match result {
+        Ok(result) => {
+            for item in result {
+                match item {
+                    OutputItem::Audio(blah) => {
+                        output
+                            .push_str(&format!("<attachment #{}: audio>\n", attachments.len() + 1));
+                        attachments.push(CreateAttachment::bytes(
+                            blah,
+                            format!("audio_{}.ogg", attachments.len()),
+                        ));
+                    }
+                    OutputItem::Misc(val) => {
+                        output.push_str(&val.show());
+                        output.push('\n');
+                    }
+                }
+            }
+        }
+        Err(err) => output = err,
+    };
+
+    let displayed_string = if output.contains("```") {
+        trace!(output, "Output contained triple backticks, denying");
+        "Output contained triple backticks, which I disallow".to_string()
+    } else {
+        if output == "" {
+            trace!("Resulting stack was empty");
+            "<Empty stack>".to_string()
+        } else {
+            trace!(
+                code,
+                output,
+                "Sending correctly formed result of running the code"
+            );
+            format!("```\n{output}\n```")
+        }
+    };
+
+    let finalized_text = format!("Source:\n{source}\nReturns:\n{displayed_string}");
+    if finalized_text.len() > 1000 {
+        send_message(msg, &http, "Message is way too long").await;
+        return;
+    }
+
+    send_message_advanced(
+        msg,
+        &http,
+        CreateMessage::new()
+            .content(finalized_text)
+            .add_files(attachments),
+    )
+    .await
 }
 #[instrument(skip(msg, http))]
 pub async fn handle_docs(msg: Message, http: Arc<Http>, code: &str) {
@@ -168,6 +223,16 @@ pub async fn send_embed(msg: Message, http: &Arc<Http>, mut text: &str, embed: E
             user = msg.author.name,
             "Error while sending with embed"
         ),
+    };
+}
+// TODO rename
+pub async fn send_message_advanced(msg: Message, http: &Arc<Http>, builder: CreateMessage) {
+    let builder = builder
+        .reference_message(&msg)
+        .allowed_mentions(CreateAllowedMentions::new().replied_user(false));
+    match msg.channel_id.send_message(http, builder).await {
+        Ok(_) => {}
+        Err(e) => eprintln!("Error sending message: {e}"),
     };
 }
 

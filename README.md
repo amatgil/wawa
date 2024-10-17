@@ -34,7 +34,7 @@ quite limited, discord does not offer many much of the ansi spec).
 - [X] have `fmt` color glyphs
 - [X] have `fmt`'s colors look good
 - [X] Catch messages that are too long
-- [ ] Audio embeds (don't just crash)
+- [X] Audio embeds (don't just crash)
 - [ ] Image embeds (don't just crash)
 - [ ] Gif embeds (don't just crash)
 - [X] Short summary of function in `w! docs`
@@ -48,3 +48,4 @@ quite limited, discord does not offer many much of the ansi spec).
 - [ ] `w!docs changelog`
 - [ ] Fix internal links in documentation (like in `under`'s docs), probably by regex subst
 - [ ] Add space and time constraints for `w!run`
+- [ ] Unify extended message sending function
