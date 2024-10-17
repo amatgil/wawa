@@ -12,12 +12,13 @@ Run with either `w!` or `wawa!`
 
 Available commands:
 - ping: pong
-- ver / version: display uiua version used by the rest of commands
-- help: display this text!
-- fmt: run the formatter
-- pad: format and generate a link to the pad
-- run: format and run the code
-- docs <fn>: show the first paragraph or so of the specified function
+- h / help: display this text!
+- v / ver / version: display uiua version used by the rest of commands
+- f / fmt: run the formatter
+- p / pad: format and generate a link to the pad
+- d / docs <fn>: show the first paragraph or so of the specified function
+- r / run: format and run the code
+- e / emojify: converts the given code to discord emoji as best as possible
 
 Examples:
 - w!fmt below+ 1 2 3

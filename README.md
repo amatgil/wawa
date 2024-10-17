@@ -1,48 +1,32 @@
 # wawa
 A relatively basic discord bot for prettifying code
 
-It is run with prefix commands: `!wawa <cmd> <args>` or `!w <cmd> <args>`
+It is run with prefix commands: `wawa!<cmd> <args>` or `w!<cmd> <args>`
 
 # Usage
-- `!wawa ping`: pong
-- `!wawa run <code>`: run the code (can be in ascii!)
-- `!wawa docs <fn>`: print the documentation for a function
-- `!wawa pad <code>`: format the code and provide a pad link
+Use either of the prefixes or a direct mention followed by the command. For example:
+- `wawa!ping`: pong
+- `wawa!run <code>`: run the code (can be in ascii!)
+- `wawa!docs <fn>`: print the documentation for a function
+- `wawa!pad <code>`: format the code and provide a pad link
+
+
+# Full list of commands
+- ping: pong
+- h / help: display this text!
+- v / ver / version: display uiua version used by the rest of commands
+- f / fmt: run the formatter
+- p / pad: format and generate a link to the pad
+- d / docs <fn>: show the first paragraph or so of the specified function
+- r / run: format and run the code
+- e / emojify: converts the given code to discord emoji as best as possible
 
 
 # Examples
-`!w run unshape 2_3_4` returns 
-```
-╭─             
-╷  0  1  2  3  
-╷  4  5  6  7  
-   8  9 10 11  
-               
-  12 13 14 15  
-  16 17 18 19  
-  20 21 22 23  
-              ╯
-```
-
-`!w docs shape` returns 
-```
-Get the dimensions of an array
-
-△5 # []
-△[] # [0]
-△1_2_3 # [3]
-△[1_2 3_4 5_6] # [3 2]
-```
-`!w pad unshape roundmul10rand_rand_rand` returns 
-```
-[Pad](https://uiua.org/pad?src=0_13_0-rc_1__wrDilrMg4oGFw5cxMOKagl_imoIK) for:
-```uiua
-°△ ⁅×10⚂_⚂
-\```
-```
+TODO: This was populated but fell out of date
 
 All uiua codeblocks use custom syntax highlighting using the `ansi` environment (which is
-incredibly limited, thank you discord for using the smallest number of colors possible).
+quite limited, discord does not offer many much of the ansi spec).
 
 # Goals
 - [X] Docs command: `w! docs tuple` returns the documentation for `tuple`
@@ -57,10 +41,9 @@ incredibly limited, thank you discord for using the smallest number of colors po
 - [X] Write out help
 - [X] Accept `w!cmd` syntax
 - [X] Automate command dispatch
-- [ ] Add `tracing` (including reason, span, date, etc)
+- [X] Add `tracing`
 - [X] Detect raw pad links and sent it wrapped (Check if the string contains `https://uiua.org/pad?src` and not `(https://uiua.org/pad?src`)
 - [ ] Handle single backticks by checking if the last char is a backtick (can't negate an empty stack). same with three
 - [ ] Slash commands (example 5)
 - [ ] `w!docs changelog`
-- [ ] Report text in embed for larger char limits
-- [ ] Fix internal link (like in `under`'s docs), probably by regex subst
+- [ ] Fix internal links in documentation (like in `under`'s docs), probably by regex subst
