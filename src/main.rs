@@ -15,6 +15,7 @@ struct Handler;
 #[async_trait]
 impl EventHandler for Handler {
     async fn message(&self, ctx: Context, msg: Message) {
+        if msg.author.bot { return }
         let contents = msg.content_safe(ctx.cache).clone();
         let trimmed = contents.trim();
         dbg!(&trimmed);

@@ -129,9 +129,7 @@ pub fn highlight_code(code: &str) -> String {
                 ),
                 SpanKind::Signature => with_style(text, AnsiState::just_color(AnsiColor::White)),
                 SpanKind::Whitespace => with_style(text, AnsiState::just_color(AnsiColor::White)),
-                SpanKind::Placeholder(p) => {
-                    format!("[wawa doesn't know what {p} is, please report]")
-                }
+                SpanKind::Placeholder(p) => format!("<placeholder>"),
                 SpanKind::Delimiter => "<delim>".to_string(),
                 SpanKind::FuncDelim(sig, set_inv) => "<funcdelim>".to_string(),
                 SpanKind::ImportSrc(src) => "<import>".to_string(),

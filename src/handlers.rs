@@ -50,8 +50,13 @@ pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
     let code = code.trim();
     let code = strip_triple_ticks(code);
     // TODO: strip single ticks as well
+    //let code = strip_single_ticks(code);
 
-    let code = strip_single_ticks(code);
+    if code.contains("```") {
+        let text = format!("Input contained triple backticks, which I disallow");
+        send_message(msg, &http, &text).await;
+        return;
+    }
 
     let source = highlight_code(code.trim());
     let result = run_uiua(strip_triple_ticks(code.trim()));
