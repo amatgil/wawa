@@ -24,6 +24,7 @@ Examples:
 - w!run below+ 1 2 3
 - w!docs tup
 
+(Do note that many IO operations are blocked, which includes `&p`, `&fras`, etc.)
 
 Ping <@328851809357791232> for any questions or if you want the version to get bumped
 "#;
@@ -69,7 +70,7 @@ pub async fn handle_unrecognized(msg: Message, http: Arc<Http>, code: &str) {
 
 // HELPERS
 
-async fn send_message(msg: Message, http: &Arc<Http>, mut text: &str) {
+pub async fn send_message(msg: Message, http: &Arc<Http>, mut text: &str) {
     if text.len() > 1000 {
         text = "Message is way too long";
     }
