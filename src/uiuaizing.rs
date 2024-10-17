@@ -73,14 +73,15 @@ pub fn run_uiua(code: &str) -> Result<Vec<OutputItem>, String> {
     match runtime.run_str(exp_code) {
         Ok(_c) => {
             trace!(code, "Code ran successfully");
-            let mut stack = runtime.take_stack();
 
             const MAX_NUM_VALUES: usize = 10;
-            if stack.len() > MAX_NUM_VALUES {
-                stack.truncate(MAX_NUM_VALUES);
-            }
 
-            Ok(stack.into_iter().map(|val| val.into()).collect())
+            Ok(runtime
+                .take_stack()
+                .into_iter()
+                .take(MAX_NUM_VALUES)
+                .map(|val| val.into())
+                .collect())
         }
         Err(e) => {
             trace!(code, "Code ran Unsuccessfully");
