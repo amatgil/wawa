@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use base64::Engine;
 use uiua::format::*;
-use uiua::{PrimClass, PrimDocFragment, PrimDocLine, Primitive, Signature, SpanKind, Uiua};
+use uiua::{PrimClass, PrimDocFragment, PrimDocLine, Primitive, Signature, SpanKind, Uiua, AsciiToken};
 use crate::*;
 
 use base64::engine::general_purpose::URL_SAFE;
@@ -17,35 +17,42 @@ pub fn run_uiua(code: &str) -> String {
 
     let exp_code = &format!("# Experimental!\n{code}");
 
-    match runtime.run_str(exp_code) {
+    let r = match runtime.run_str(exp_code) {
         Ok(_c) => {
-            let r = runtime
+            runtime
                 .take_stack()
                 .into_iter()
                 .take(10)
                 .map(|v| v.show())
                 .collect::<Vec<String>>()
-                .join("\n");
+                .join("\n")
+        }
+        Err(e) => format!("Error while running: {e} "),
+    };
+
+    if r.contains("```") {
+        dbg!(r);
+        "Output contained triple backticks, which I disallow".to_string()
+    } else {
+        if r == "" {
+            "<Empty stack>".to_string()
+        } else {
             format!("```\n{r}\n```")
         }
-        Err(e) => format!(
-            "Error while running:
-```
-{e}
-```
-"
-        ),
     }
 }
 
 pub fn get_docs(f: &str) -> String {
-    match Primitive::from_format_name(f) {
+    match Primitive::from_format_name(f)
+        .or_else(|| Primitive::from_glyph(f.chars().next().unwrap_or_default()))
+        .or_else(|| Primitive::from_name(f))
+    {
         Some(docs) => {
             let d = docs
                 .doc()
                 .lines
                 .iter()
-                .take(4)
+                .take(5)
                 .map(print_docs)
                 .collect::<Vec<String>>()
                 .join("\n");
