@@ -28,9 +28,9 @@ async fn handle_message(ctx: Context, msg: Message) {
     let commanded = trimmed
         .strip_prefix("w!")
         .or_else(|| trimmed.strip_prefix("wawa!"))
-        .or_else(|| trimmed.strip_prefix(&format!("@{}", &*SELF_HANDLE)))
-        .or_else(|| trimmed.strip_prefix(&format!("<@{}>", &*SELF_ID)))
-        .or_else(|| trimmed.strip_prefix(&format!("<@&{}>", &*SELF_ID)));
+        .or_else(|| trimmed.strip_prefix(&format!("@{}", *SELF_HANDLE)))
+        .or_else(|| trimmed.strip_prefix(&format!("<@{}>", *SELF_ID)))
+        .or_else(|| trimmed.strip_prefix(&format!("<@&{}>", *SELF_ID /* Self-role */)));
 
     if let Some(s) = commanded {
         event!(Level::INFO, user = msg.author.name, body = ?s, "Processing body");
