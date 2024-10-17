@@ -7,7 +7,7 @@ use tracing::{debug, event, info, instrument, trace, Level};
 use wawa::*;
 
 const SELF_HANDLE: LazyLock<String> =
-    LazyLock::new(|| dotenv::var("BOT_SELF_HANDLE").unwrap_or_else(|_| "@wawa#0280".into()));
+    LazyLock::new(|| dotenv::var("BOT_SELF_HANDLE").unwrap_or_else(|_| "wawa#0280".into()));
 const SELF_ID: LazyLock<u64> =
     LazyLock::new(|| match dotenv::var("BOT_SELF_ID").map(|str| str.parse()) {
         Ok(Ok(id)) => id,
