@@ -16,7 +16,7 @@ struct AnsiState {
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, Default)]
 enum AnsiColor {
-    Black,
+    Gray, // Also black
     Red,
     Green,
     Yellow,
@@ -63,7 +63,7 @@ impl AnsiState {
 impl AnsiColor {
     fn ansi_code(&self) -> u8 {
         match self {
-            Self::Black => 30,
+            Self::Gray => 30,
             Self::Red => 31,
             Self::Green => 32,
             Self::Yellow => 33,
@@ -83,7 +83,7 @@ fn with_style(s: &str, ansi: AnsiState) -> String {
 
 /// Returns code surrounded by ANSI backticks to fake highlighting
 pub fn highlight_code(code: &str) -> String {
-    let spans: Vec<_> = uiua::lsp::spans(code).0;
+    let spans: Vec<_> = dbg!(uiua::lsp::spans(code)).0;
     let mut r: String = spans
         .into_iter()
         .map(|s| {
@@ -102,7 +102,7 @@ pub fn highlight_code(code: &str) -> String {
                 SpanKind::Comment => with_style(
                     text,
                     AnsiState {
-                        color: AnsiColor::White,
+                        color: AnsiColor::Gray,
                         dim: true,
                         ..Default::default()
                     },

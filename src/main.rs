@@ -7,6 +7,7 @@ use serenity::{
     model::channel::Message,
     prelude::*,
 };
+use tracing::instrument;
 use wawa::*;
 
 const SELF_AT: &str = "@wawa#0280";
@@ -16,6 +17,7 @@ const SELF_ROLE: &str = "<@&1295816766446108795>";
 struct Handler;
 
 
+#[instrument ]
 async fn handle_message(ctx: Context, msg: Message) {
     if msg.author.bot {
         return;
@@ -31,17 +33,17 @@ async fn handle_message(ctx: Context, msg: Message) {
         .or_else(|| trimmed.strip_prefix(SELF_ROLE));
 
     if let Some(s) = commanded {
-        let s = s.strip_prefix(" ").unwrap_or_else(|| s);
-        let s = s.strip_prefix("\n").unwrap_or_else(|| s);
+        let s = s.trim();
+        dbg!(s);
         let space_idx = s.bytes().position(|c| c == b' ').unwrap_or_else(|| s.len());
-        match s[0..space_idx].trim() {
+        match dbg!(s[0..space_idx].trim()) {
             "ping" => handle_ping(msg, ctx.http).await,
-            "ver" | "version" => handle_version(msg, ctx.http).await,
-            "help" => handle_help(msg, ctx.http).await,
-            "fmt" => handle_fmt(msg, ctx.http, &s[space_idx..].trim()).await,
-            "pad" => handle_pad(msg, ctx.http, &s[space_idx..].trim()).await,
-            "doc" | "docs" => handle_docs(msg, ctx.http, &s[space_idx..].trim()).await,
-            "run" => handle_run(msg, ctx.http, &s[space_idx..].trim()).await,
+            "v" | "ver" | "version" => handle_version(msg, ctx.http).await,
+            "h" | "help" => handle_help(msg, ctx.http).await,
+            "f" | "fmt" => handle_fmt(msg, ctx.http, &s[space_idx..].trim()).await,
+            "p" | "pad" => handle_pad(msg, ctx.http, &s[space_idx..].trim()).await,
+            "d" | "doc" | "docs" => handle_docs(msg, ctx.http, &s[space_idx..].trim()).await,
+            "r" | "run" => handle_run(msg, ctx.http, &s[space_idx..].trim()).await,
             unrec => handle_unrecognized(msg, ctx.http, unrec).await,
         }
     } else {
@@ -73,6 +75,8 @@ impl EventHandler for Handler {
 
 #[tokio::main]
 async fn main() {
+    //tracing_subscriber::
+
     let token = dotenv::var("DISCORD_TOKEN").expect("DISCORD_TOKEN not found in .env");
     // Login with a bot token from the environment
     // Set gateway intents, which decides what events the bot will be notified about

@@ -34,7 +34,7 @@ static MAX_FN_LEN: LazyLock<usize> = LazyLock::new(||{
     uiua::PrimClass::all()
         .map(|pc| pc.primitives())
         .flatten()
-        .map(|p| dbg!(p.names().text.chars().filter(|c| !c.is_whitespace()).collect::<String>()).len())
+        .map(|p| p.names().text.chars().filter(|c| !c.is_whitespace()).collect::<String>().len())
         .max()
         .unwrap() // There _are_ primitives
 });
