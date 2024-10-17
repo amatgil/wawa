@@ -145,21 +145,37 @@ pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
     };
 
     let finalized_text = format!("Source:\n{source}\nReturns:\n{result}");
+    let shortened_text =
+        format!("<Resulting message is too large, skipping the source>\nReturns:\n{result}");
 
-    if finalized_text.len() > MAX_MSG_LEN {
-        debug!(text = ?&finalized_text.chars().take(200).collect::<String>(), "Final message was too long");
-        send_message(msg, &http, "Message is way too long").await;
-        return;
+    match (finalized_text.len(), shortened_text.len()) {
+        (f, _) if f < MAX_MSG_LEN => {
+            debug!(text = ?&finalized_text.chars().take(200).collect::<String>(), "Sending full-length version");
+            send_message_advanced(
+                msg,
+                &http,
+                CreateMessage::new()
+                    .content(finalized_text)
+                    .add_files(attachments),
+            )
+            .await;
+        }
+        (f, s) if f > MAX_MSG_LEN && s <= MAX_MSG_LEN => {
+            debug!(text = ?&finalized_text.chars().take(200).collect::<String>(), "Final message was too long, sending shortened version");
+            send_message_advanced(
+                msg,
+                &http,
+                CreateMessage::new()
+                    .content(shortened_text)
+                    .add_files(attachments),
+            )
+            .await;
+        }
+        _ => {
+            debug!(text = ?&finalized_text.chars().take(200).collect::<String>(), "Final message AND shortened verion were too long");
+            send_message(msg, &http, "Message is way too long").await;
+        }
     }
-
-    send_message_advanced(
-        msg,
-        &http,
-        CreateMessage::new()
-            .content(finalized_text)
-            .add_files(attachments),
-    )
-    .await
 }
 #[instrument(skip(msg, http))]
 pub async fn handle_docs(msg: Message, http: Arc<Http>, code: &str) {

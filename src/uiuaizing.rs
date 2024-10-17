@@ -12,6 +12,7 @@ use std::sync::LazyLock;
 
 mod encode;
 
+const MAX_STACK_VALS_DISPLAYED: usize = 10;
 const DEFAULT_EXECUTION_LIMIT: Duration = Duration::from_secs(2);
 const EMOJI_IDS: &'static str = include_str!("../assets/glyphlist.txt");
 static EMOJI_MAP: LazyLock<HashMap<&str, &str>> = LazyLock::new(|| {
@@ -73,13 +74,10 @@ pub fn run_uiua(code: &str) -> Result<Vec<OutputItem>, String> {
     match runtime.run_str(exp_code) {
         Ok(_c) => {
             trace!(code, "Code ran successfully");
-
-            const MAX_NUM_VALUES: usize = 10;
-
             Ok(runtime
                 .take_stack()
                 .into_iter()
-                .take(MAX_NUM_VALUES)
+                .take(MAX_STACK_VALS_DISPLAYED)
                 .map(|val| val.into())
                 .collect())
         }
