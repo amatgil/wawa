@@ -62,3 +62,4 @@ incredibly limited, thank you discord for using the smallest number of colors po
 - [ ] Handle single backticks by checking if the last char is a backtick (can't negate an empty stack). same with three
 - [ ] Slash commands (example 5)
 - [ ] `w!docs changelog`
+- [ ] Report text in embed for larger char limits

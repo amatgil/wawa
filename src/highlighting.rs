@@ -84,11 +84,15 @@ fn with_style(s: &str, ansi: AnsiState) -> String {
 /// Returns code surrounded by ANSI backticks to fake highlighting
 pub fn highlight_code(code: &str) -> String {
     let spans: Vec<_> = dbg!(uiua::lsp::spans(code)).0;
+    let mut last_cursor: u32 = 0;
     let mut r: String = spans
         .into_iter()
         .map(|s| {
+            let newlines_skipped = code.bytes().skip(last_cursor as usize).take(s.span.start.byte_pos as usize - last_cursor as usize).filter(|c| *c == b'\n').count();
             let text = &code[s.span.start.byte_pos as usize..s.span.end.byte_pos as usize];
-            match s.value {
+            last_cursor = s.span.end.byte_pos;
+
+            let fmtd = match s.value {
                 SpanKind::Primitive(p, sig) => print_prim(p, sig),
                 SpanKind::String => with_style(text, AnsiState::just_color(AnsiColor::Cyan)),
                 SpanKind::Number => with_style(
@@ -145,7 +149,8 @@ pub fn highlight_code(code: &str) -> String {
                 }
                 SpanKind::Subscript(_, None) => with_style(text, AnsiState::default()),
                 SpanKind::Obverse(..) => with_style(text, AnsiState::default()),
-            }
+            };
+            format!("{}{}", std::iter::repeat('\n').take(newlines_skipped).collect::<String>(), fmtd)
         })
         .collect();
 
