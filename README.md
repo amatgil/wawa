@@ -53,10 +53,11 @@ incredibly limited, thank you discord for using the smallest number of colors po
 - [ ] Audio embeds (don't just crash)
 - [ ] Image embeds (don't just crash)
 - [ ] Gif embeds (don't just crash)
-- [ ] Short summary of function in `w! docs`
-- [ ] Write out help
-- [ ] Accept `w!cmd` syntax
-- [ ] Automate command dispatch
+- [X] Short summary of function in `w! docs`
+- [X] Write out help
+- [X] Accept `w!cmd` syntax
+- [X] Automate command dispatch
 - [ ] Add `tracing` (including reason, span, date, etc)
-- [ ] Accept single backtick code
 - [ ] Detect raw pad links and sent it wrapped (Check if the string contains `https://uiua.org/pad?src` and not `(https://uiua.org/pad?src`)
+- [ ] Handle single backticks by checking if the last char is a backtick (can't negate an empty stack). same with three
+- [ ] Slash commands (example 5)

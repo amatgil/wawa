@@ -15,12 +15,7 @@ struct Handler;
 #[async_trait]
 impl EventHandler for Handler {
     async fn message(&self, ctx: Context, msg: Message) {
-        //let commands: HashMap<Vec<&str>, &dyn Command> = HashMap::from([
-        //    (vec!["ping"], &handle_ping as &dyn Command),
-        //    (vec!["version"], &handle_version as &dyn Command),
-        //]);
-
-        let contents = msg.content.clone();
+        let contents = msg.content_safe(ctx.cache).clone();
         let s = contents.trim();
         let Some(s) = s.strip_prefix("w!")
             .or_else(||s.strip_prefix("wawa!"))
@@ -35,7 +30,7 @@ impl EventHandler for Handler {
             "ping" => handle_ping(msg, ctx.http).await,
             "ver" | "version" => handle_version(msg, ctx.http).await,
             "help" => handle_help(msg, ctx.http).await,
-            "high" | "highlight" => handle_highlight(msg, ctx.http, &s[space_idx..].trim()).await,
+            "fmt" => handle_fmt(msg, ctx.http, &s[space_idx..].trim()).await,
             "pad" => handle_pad(msg, ctx.http, &s[space_idx..].trim()).await,
             "docs" => handle_docs(msg, ctx.http, &s[space_idx..].trim()).await,
             "run" => handle_run(msg, ctx.http, &s[space_idx..].trim()).await,
@@ -67,19 +62,4 @@ async fn main() {
     if let Err(why) = client.start().await {
         println!("Client error: {why:?}");
     }
-}
-
-fn is_command<'a, 'b>(m: &'a str, cmd: &'b str) -> Option<&'a str> {
-    m.strip_prefix(&format!("wawa!{}", cmd))
-        .or_else(|| m.strip_prefix(&format!("w!{}", cmd)))
-        .or_else(|| m.strip_prefix(&format!("{SELF_ID}{}", cmd))).map(|s| s.trim())
-}
-
-
-fn strip_triple_ticks(mut s: &str) -> &str {
-    s = s.trim();
-    s = s.strip_prefix("```").unwrap_or(s);
-    s = s.strip_prefix("uiua").unwrap_or(s);
-    s = s.strip_suffix("```").unwrap_or(s);
-    s
 }

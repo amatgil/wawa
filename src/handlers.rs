@@ -3,7 +3,30 @@ use std::sync::Arc;
 use crate::*;
 use serenity::all::{Http, Message};
 
-const HELP_MESSAGE: &str = r#"The help message has not been written yet!"#;
+const HELP_MESSAGE: &str = r#"# wawa
+Your friendly neighbourhood uiua bot!
+
+Run with either `w!` or `wawa!`
+
+Available commands:
+- ping: pong
+- ver / version: display uiua version used by the rest of commands
+- help: display this text!
+- fmt: run the formatter
+- pad: format and generate a link to the pad
+- run: format and run the code
+- docs <fn>: show the first paragraph or so of the specified function
+
+Examples:
+- w!fmt below+ 1 2 3
+- w! fmt below+ 1 2 3
+- w!pad below+ 1 2 3
+- w!run below+ 1 2 3
+- w!docs tup
+
+
+Ping <@328851809357791232> for any questions or if you want the version to get bumped
+"#;
 
 // HANDLERS
 pub async fn handle_ping(msg: Message, http: Arc<Http>) {
@@ -16,13 +39,19 @@ pub async fn handle_version(msg: Message, http: Arc<Http>) {
 pub async fn handle_help(msg: Message, http: Arc<Http>) {
     send_message(msg, &http, HELP_MESSAGE).await
 }
-pub async fn handle_highlight(msg: Message, http: Arc<Http>, code: &str) {
+pub async fn handle_fmt(msg: Message, http: Arc<Http>, code: &str) {
     send_message(msg, &http, &highlight_code(strip_triple_ticks(code.trim()))).await
 }
 pub async fn handle_pad(msg: Message, http: Arc<Http>, code: &str) {
     send_message(msg, &http, &format_and_get_pad_link(code.trim())).await;
 }
 pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
+    let mut code = code.trim();
+    let code = strip_triple_ticks(code);
+    // TODO: strip single ticks as well
+
+    let code = strip_single_ticks(code);
+
     let source = highlight_code(code.trim());
     let result = run_uiua(strip_triple_ticks(code.trim()));
     let finalized = format!("Source:\n{source}\nReturns:\n{result}");
@@ -55,5 +84,12 @@ fn strip_triple_ticks(mut s: &str) -> &str {
     s = s.strip_prefix("```").unwrap_or(s);
     s = s.strip_prefix("uiua").unwrap_or(s);
     s = s.strip_suffix("```").unwrap_or(s);
+    s
+}
+
+fn strip_single_ticks(mut s: &str) -> &str {
+    s = s.trim();
+    s = s.strip_prefix("`").unwrap_or(s);
+    s = s.strip_suffix("`").unwrap_or(s);
     s
 }
