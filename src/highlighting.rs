@@ -172,7 +172,6 @@ pub fn highlight_code(code: &str) -> String {
     } else {
         trace!(?code, "Highlighted code successfully");
         r = format!("```ansi\n{}\n```", r);
-        println!("{r}");
     }
     r
 }

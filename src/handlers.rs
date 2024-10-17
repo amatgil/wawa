@@ -225,8 +225,11 @@ pub async fn send_embed(msg: Message, http: &Arc<Http>, mut text: &str, embed: E
         ),
     };
 }
+
 // TODO rename
+#[instrument(skip_all)]
 pub async fn send_message_advanced(msg: Message, http: &Arc<Http>, builder: CreateMessage) {
+    trace!("Building up advanced message");
     let builder = builder
         .reference_message(&msg)
         .allowed_mentions(CreateAllowedMentions::new().replied_user(false));
