@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use crate::*;
 use serenity::all::{Http, Message};
+use std::sync::LazyLock;
 
 const HELP_MESSAGE: &str = r#"# wawa
 Your friendly neighbourhood uiua bot!
@@ -29,11 +30,21 @@ Examples:
 Ping <@328851809357791232> for any questions or if you want the version to get bumped
 "#;
 
+static MAX_FN_LEN: LazyLock<usize> = LazyLock::new(||{
+    uiua::PrimClass::all()
+        .map(|pc| pc.primitives())
+        .flatten()
+        .map(|p| dbg!(p.names().text).len())
+        .max()
+        .unwrap() // There _are_ primitives
+});
+
 // HANDLERS
 pub async fn handle_ping(msg: Message, http: Arc<Http>) {
     send_message(msg, &http, "Pong!").await
 }
 pub async fn handle_version(msg: Message, http: Arc<Http>) {
+    //msg.allowed_mention //TODO: forbid pinging directly
     send_message(msg, &http, uiua::VERSION).await
 }
 
@@ -65,11 +76,15 @@ pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
     send_message(msg, &http, &finalized).await
 }
 pub async fn handle_docs(msg: Message, http: Arc<Http>, code: &str) {
-    send_message(msg, &http, &get_docs(code.trim())).await
+    if code.len() > *MAX_FN_LEN {
+        send_message(msg, &http, &format!("Functions don't have more than {} chars", *MAX_FN_LEN)).await
+    } else {
+        send_message(msg, &http, &get_docs(code.trim())).await
+    }
 }
 pub async fn handle_unrecognized(msg: Message, http: Arc<Http>, code: &str) {
     let unrec = code.trim();
-    let shortened = &unrec[0..(30.min(unrec.len()))];
+    let shortened = &unrec[0..(20.min(unrec.len()))];
     eprintln!("Someone sent an unrecognized command: '{shortened}'");
     send_message(msg, &http, &format!("I don't recognize '{}' as a command :pensive:", shortened)).await;
 }
@@ -77,6 +92,7 @@ pub async fn handle_unrecognized(msg: Message, http: Arc<Http>, code: &str) {
 // HELPERS
 
 pub async fn send_message(msg: Message, http: &Arc<Http>, mut text: &str) {
+    //let mut message = age(msg:
     if text.len() > 1000 {
         text = "Message is way too long";
     }

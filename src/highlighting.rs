@@ -141,7 +141,7 @@ pub fn highlight_code(code: &str) -> String {
 
     dbg!(&code);
     if r == "" {
-        r = "<Empty stack>".into();
+        r = "<Empty code>".into();
     } else {
         r = dbg!(format!("```ansi\n{}\n```", r));
         println!("{r}");
