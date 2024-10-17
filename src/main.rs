@@ -2,56 +2,68 @@ pub use std::sync::Arc;
 
 use dotenv;
 use serenity::{
-    all::{Http, Ready}, async_trait, futures::future::BoxFuture, model::channel::Message, prelude::*
+    all::Ready,
+    async_trait,
+    model::channel::Message,
+    prelude::*,
 };
 use wawa::*;
 
-use std::{collections::HashMap, fmt::Debug, future::Future, ops::{Add, Deref}};
+const SELF_AT: &str = "@wawa#0280";
 const SELF_ID: &str = "<@1295816766446108795>";
 const SELF_ROLE: &str = "<@&1295816766446108795>";
 
 struct Handler;
 
+
+async fn handle_message(ctx: Context, msg: Message) {
+    if msg.author.bot {
+        return;
+    }
+    let contents = msg.content_safe(ctx.cache).clone();
+    let trimmed = contents.trim();
+    dbg!(&trimmed);
+
+    let commanded = trimmed.strip_prefix("w!")
+        .or_else(|| trimmed.strip_prefix("wawa!"))
+        .or_else(|| trimmed.strip_prefix(SELF_ID))
+        .or_else(|| trimmed.strip_prefix(SELF_AT))
+        .or_else(|| trimmed.strip_prefix(SELF_ROLE));
+
+    if let Some(s) = commanded {
+        let s = s.strip_prefix(" ").unwrap_or_else(|| s);
+        let s = s.strip_prefix("\n").unwrap_or_else(|| s);
+        let space_idx = s.bytes().position(|c| c == b' ').unwrap_or_else(|| s.len());
+        match s[0..space_idx].trim() {
+            "ping" => handle_ping(msg, ctx.http).await,
+            "ver" | "version" => handle_version(msg, ctx.http).await,
+            "help" => handle_help(msg, ctx.http).await,
+            "fmt" => handle_fmt(msg, ctx.http, &s[space_idx..].trim()).await,
+            "pad" => handle_pad(msg, ctx.http, &s[space_idx..].trim()).await,
+            "doc" | "docs" => handle_docs(msg, ctx.http, &s[space_idx..].trim()).await,
+            "run" => handle_run(msg, ctx.http, &s[space_idx..].trim()).await,
+            unrec => handle_unrecognized(msg, ctx.http, unrec).await,
+        }
+    } else {
+        // We're not a command, but we can check if the message contains an un-markdown'd link
+        eprintln!("Checkign for pad link");
+        /*
+        if has_raw_pad_link(&msg.content) {
+        eprintln!("FOUND PAD LINK");
+        let link = "<link go here>";
+        let response = format!("You seem to have sent a raw pad link. Please use markdown links next time (like [this](<link>) next time). For now, here is [the link you sent]({link})");
+        send_message(msg, &ctx.http, &response).await;
+    }
+         */
+    }
+}
+
 #[async_trait]
 impl EventHandler for Handler {
     async fn message(&self, ctx: Context, msg: Message) {
-        if msg.author.bot { return }
-        let contents = msg.content_safe(ctx.cache).clone();
-        let trimmed = contents.trim();
-        dbg!(&trimmed);
-
-        let commanded = trimmed.strip_prefix("w!")
-            .or_else(||trimmed.strip_prefix("wawa!"))
-            .or_else(||trimmed.strip_prefix(&format!("{SELF_ID}"))
-            .or_else(||trimmed.strip_prefix(&format!("{SELF_ROLE}"))));
-
-        if let Some(s) = commanded {
-            let s = s.strip_prefix(" ").unwrap_or_else(|| s);
-            let s = s.strip_prefix("\n").unwrap_or_else(|| s);
-            let space_idx = s.bytes().position(|c| c == b' ').unwrap_or_else(||s.len());
-            match s[0..space_idx].trim() {
-                "ping" => handle_ping(msg, ctx.http).await,
-                "ver" | "version" => handle_version(msg, ctx.http).await,
-                "help" => handle_help(msg, ctx.http).await,
-                "fmt" => handle_fmt(msg, ctx.http, &s[space_idx..].trim()).await,
-                "pad" => handle_pad(msg, ctx.http, &s[space_idx..].trim()).await,
-                "doc" | "docs" => handle_docs(msg, ctx.http, &s[space_idx..].trim()).await,
-                "run" => handle_run(msg, ctx.http, &s[space_idx..].trim()).await,
-                unrec => handle_unrecognized(msg, ctx.http, unrec).await,
-            }
-        } else { // We're not a command, but we can check if the message contains an un-markdown'd link
-            eprintln!("Checkign for pad link");
-            /*
-            if has_raw_pad_link(&msg.content) {
-                eprintln!("FOUND PAD LINK");
-                let link = "<link go here>";
-                let response = format!("You seem to have sent a raw pad link. Please use markdown links next time (like [this](<link>) next time). For now, here is [the link you sent]({link})");
-                send_message(msg, &ctx.http, &response).await;
-            }
-            */
-        }
-
-
+        tokio::spawn(async move {
+            handle_message(ctx, msg).await;
+        });
     }
 
     async fn ready(&self, _: Context, ready: Ready) {
