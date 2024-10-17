@@ -48,3 +48,4 @@ quite limited, discord does not offer many much of the ansi spec).
 - [ ] `w!docs changelog`
 - [ ] Fix internal links in documentation (like in `under`'s docs), probably by regex subst
 - [ ] Add space and time constraints for `w!run`
+- [ ] Unify extended message sending function
