@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use crate::*;
 use base64::Engine;
+use tracing::trace;
 use uiua::format::*;
 use uiua::{PrimDocFragment, PrimDocLine, Primitive, Uiua};
 
@@ -26,6 +27,7 @@ static EMOJI_MAP: LazyLock<HashMap<&str, &str>> = LazyLock::new(|| {
 });
 
 pub fn run_uiua(code: &str) -> String {
+    trace!(code, "Starting to execute uiua code");
     if code.is_empty() {
         return "Cannot run empty code".into();
     }
@@ -33,22 +35,35 @@ pub fn run_uiua(code: &str) -> String {
     let mut runtime = Uiua::with_safe_sys().with_execution_limit(DEFAULT_EXECUTION_LIMIT);
     let exp_code = &format!("# Experimental!\n{code}");
     let r = match runtime.run_str(exp_code) {
-        Ok(_c) => runtime
-            .take_stack()
-            .into_iter()
-            .take(10)
-            .map(|v| v.show())
-            .collect::<Vec<String>>()
-            .join("\n"),
-        Err(e) => format!("Error while running: {e} "),
+        Ok(_c) => {
+            trace!(code, "Code ran successfully");
+            runtime
+                .take_stack()
+                .into_iter()
+                .take(10)
+                .map(|v| v.show())
+                .collect::<Vec<String>>()
+                .join("\n")
+        }
+        Err(e) => {
+            trace!(code, "Code ran UNsuccessfully");
+            format!("Error while running: {e} ")
+        }
     };
 
     if r.contains("```") {
+        trace!(r, "Ouput contained triple backticks, denying");
         "Output contained triple backticks, which I disallow".to_string()
     } else {
         if r == "" {
+            trace!("Resulting stack was empty");
             "<Empty stack>".to_string()
         } else {
+            trace!(
+                code,
+                r,
+                "Sending correctly formed result of running the code"
+            );
             format!("```\n{r}\n```")
         }
     }
@@ -77,7 +92,7 @@ pub fn get_docs(f: &str) -> String {
                 .map(print_docs)
                 .collect::<Vec<String>>()
                 .join("\n");
-            format!("Documentation ([link](https://uiua.org/docs/{f})):\n{short}\n\n\n{long}")
+            format!("\n{short}\n\n\n{long}\n\n([More information](https://uiua.org/docs/{f}))")
         }
         None => format!("No docs found for '{f}', did you spell it right?"),
     }
