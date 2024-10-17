@@ -2,47 +2,70 @@ pub use std::sync::Arc;
 
 use dotenv;
 use serenity::{
-    all::{Http, Ready}, async_trait, futures::future::BoxFuture, model::channel::Message, prelude::*
+    all::Ready,
+    async_trait,
+    model::channel::Message,
+    prelude::*,
 };
+use tracing::instrument;
 use wawa::*;
 
-use std::{collections::HashMap, fmt::Debug, future::Future, ops::{Add, Deref}};
+const SELF_AT: &str = "@wawa#0280";
 const SELF_ID: &str = "<@1295816766446108795>";
 const SELF_ROLE: &str = "<@&1295816766446108795>";
 
 struct Handler;
 
+
+#[instrument ]
+async fn handle_message(ctx: Context, msg: Message) {
+    if msg.author.bot {
+        return;
+    }
+    let contents = msg.content_safe(ctx.cache).clone();
+    let trimmed = contents.trim();
+    dbg!(&trimmed);
+
+    let commanded = trimmed.strip_prefix("w!")
+        .or_else(|| trimmed.strip_prefix("wawa!"))
+        .or_else(|| trimmed.strip_prefix(SELF_ID))
+        .or_else(|| trimmed.strip_prefix(SELF_AT))
+        .or_else(|| trimmed.strip_prefix(SELF_ROLE));
+
+    if let Some(s) = commanded {
+        let s = s.trim();
+        dbg!(s);
+        let space_idx = s.bytes().position(|c| c == b' ').unwrap_or_else(|| s.len());
+        match dbg!(s[0..space_idx].trim()) {
+            "ping" => handle_ping(msg, ctx.http).await,
+            "v" | "ver" | "version" => handle_version(msg, ctx.http).await,
+            "h" | "help" => handle_help(msg, ctx.http).await,
+            "f" | "fmt" => handle_fmt(msg, ctx.http, &s[space_idx..].trim()).await,
+            "p" | "pad" => handle_pad(msg, ctx.http, &s[space_idx..].trim()).await,
+            "d" | "doc" | "docs" => handle_docs(msg, ctx.http, &s[space_idx..].trim()).await,
+            "r" | "run" => handle_run(msg, ctx.http, &s[space_idx..].trim()).await,
+            unrec => handle_unrecognized(msg, ctx.http, unrec).await,
+        }
+    } else {
+        // We're not a command, but we can check if the message contains an un-markdown'd link
+        eprintln!("Checkign for pad link");
+        /*
+        if has_raw_pad_link(&msg.content) {
+        eprintln!("FOUND PAD LINK");
+        let link = "<link go here>";
+        let response = format!("You seem to have sent a raw pad link. Please use markdown links next time (like [this](<link>) next time). For now, here is [the link you sent]({link})");
+        send_message(msg, &ctx.http, &response).await;
+    }
+         */
+    }
+}
+
 #[async_trait]
 impl EventHandler for Handler {
     async fn message(&self, ctx: Context, msg: Message) {
-        //let commands: HashMap<Vec<&str>, &dyn Command> = HashMap::from([
-        //    (vec!["ping"], &handle_ping as &dyn Command),
-        //    (vec!["version"], &handle_version as &dyn Command),
-        //]);
-
-        let contents = msg.content.clone();
-        let s = contents.trim();
-        let Some(s) = s.strip_prefix("w!")
-            .or_else(||s.strip_prefix("wawa!"))
-            .or_else(||s.strip_prefix(&format!("{SELF_ID}"))
-            .or_else(||s.strip_prefix(&format!("{SELF_ROLE}")))) else { return };
-
-        let s = s.strip_prefix(" ").unwrap_or_else(|| s);
-
-        let space_idx = s.bytes().position(|c| c == b' ').unwrap_or_else(||s.len());
-
-        match &s[0..space_idx] {
-            "ping" => handle_ping(msg, ctx.http).await,
-            "ver" | "version" => handle_version(msg, ctx.http).await,
-            "help" => handle_help(msg, ctx.http).await,
-            "high" | "highlight" => handle_highlight(msg, ctx.http, &s[space_idx..].trim()).await,
-            "pad" => handle_pad(msg, ctx.http, &s[space_idx..].trim()).await,
-            "docs" => handle_docs(msg, ctx.http, &s[space_idx..].trim()).await,
-            "run" => handle_run(msg, ctx.http, &s[space_idx..].trim()).await,
-            unrec => handle_unrecognized(msg, ctx.http, unrec).await,
-        }
-
-
+        tokio::spawn(async move {
+            handle_message(ctx, msg).await;
+        });
     }
 
     async fn ready(&self, _: Context, ready: Ready) {
@@ -52,6 +75,8 @@ impl EventHandler for Handler {
 
 #[tokio::main]
 async fn main() {
+    //tracing_subscriber::
+
     let token = dotenv::var("DISCORD_TOKEN").expect("DISCORD_TOKEN not found in .env");
     // Login with a bot token from the environment
     // Set gateway intents, which decides what events the bot will be notified about
@@ -67,19 +92,4 @@ async fn main() {
     if let Err(why) = client.start().await {
         println!("Client error: {why:?}");
     }
-}
-
-fn is_command<'a, 'b>(m: &'a str, cmd: &'b str) -> Option<&'a str> {
-    m.strip_prefix(&format!("wawa!{}", cmd))
-        .or_else(|| m.strip_prefix(&format!("w!{}", cmd)))
-        .or_else(|| m.strip_prefix(&format!("{SELF_ID}{}", cmd))).map(|s| s.trim())
-}
-
-
-fn strip_triple_ticks(mut s: &str) -> &str {
-    s = s.trim();
-    s = s.strip_prefix("```").unwrap_or(s);
-    s = s.strip_prefix("uiua").unwrap_or(s);
-    s = s.strip_suffix("```").unwrap_or(s);
-    s
 }
