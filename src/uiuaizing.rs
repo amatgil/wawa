@@ -70,19 +70,6 @@ pub fn run_uiua(code: &str) -> Result<Vec<OutputItem>, String> {
     let mut runtime = Uiua::with_safe_sys().with_execution_limit(DEFAULT_EXECUTION_LIMIT);
     let exp_code = &format!("# Experimental!\n{code}");
 
-    let r = match runtime.run_str(exp_code) {
-        Ok(_c) => runtime
-            .take_stack()
-            .into_iter()
-            .take(10)
-            .map(|v| v.show())
-            .collect::<Vec<String>>()
-            .join("\n"),
-        Err(e) => {
-            format!("Error while running: {e} ")
-        }
-    };
-
     match runtime.run_str(exp_code) {
         Ok(_c) => {
             trace!(code, "Code ran successfully");
