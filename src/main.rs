@@ -27,6 +27,7 @@ impl EventHandler for Handler {
 
         if let Some(s) = commanded {
             let s = s.strip_prefix(" ").unwrap_or_else(|| s);
+            let s = s.strip_prefix("\n").unwrap_or_else(|| s);
             let space_idx = s.bytes().position(|c| c == b' ').unwrap_or_else(||s.len());
             match &s[0..space_idx] {
                 "ping" => handle_ping(msg, ctx.http).await,
@@ -34,7 +35,7 @@ impl EventHandler for Handler {
                 "help" => handle_help(msg, ctx.http).await,
                 "fmt" => handle_fmt(msg, ctx.http, &s[space_idx..].trim()).await,
                 "pad" => handle_pad(msg, ctx.http, &s[space_idx..].trim()).await,
-                "docs" => handle_docs(msg, ctx.http, &s[space_idx..].trim()).await,
+                "doc" | "docs" => handle_docs(msg, ctx.http, &s[space_idx..].trim()).await,
                 "run" => handle_run(msg, ctx.http, &s[space_idx..].trim()).await,
                 unrec => handle_unrecognized(msg, ctx.http, unrec).await,
             }
