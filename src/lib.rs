@@ -1,4 +1,4 @@
-mod check_raw_pad_links;
+mod handle_raw_pad_links;
 mod handlers;
 mod highlighting;
 mod uiuaizing;
