@@ -123,6 +123,12 @@ pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
                         output.push_str(&val.show());
                         output.push('\n');
                     }
+                    OutputItem::Continuation(more) => {
+                        output.push_str(&format!(
+                            "<{more} more item{}>\n",
+                            if more == 1 { "" } else { "s" }
+                        ));
+                    }
                 }
             }
         }
