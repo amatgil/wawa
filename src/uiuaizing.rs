@@ -34,6 +34,8 @@ pub enum OutputItem {
     Audio(Box<[u8]>),
     /// Miscellaneous value.
     Misc(uiua::Value),
+    /// "Hey, there's {n} more values!" indicator
+    Continuation(u32),
     // TODO: images, gifs, you know the drill
 }
 
@@ -74,12 +76,20 @@ pub fn run_uiua(code: &str) -> Result<Vec<OutputItem>, String> {
     match runtime.run_str(exp_code) {
         Ok(_c) => {
             trace!(code, "Code ran successfully");
-            Ok(runtime
-                .take_stack()
-                .into_iter()
-                .take(MAX_STACK_VALS_DISPLAYED)
-                .map(|val| val.into())
-                .collect())
+            let mut stack = runtime.take_stack();
+            let stack_len = stack.len();
+            if stack_len > MAX_STACK_VALS_DISPLAYED {
+                stack.truncate(MAX_STACK_VALS_DISPLAYED);
+            }
+            let results: Vec<_> =
+                stack
+                    .into_iter()
+                    .map(|val| val.into())
+                    .chain((stack_len > MAX_STACK_VALS_DISPLAYED).then_some(
+                        OutputItem::Continuation((stack_len - MAX_STACK_VALS_DISPLAYED) as u32),
+                    ))
+                    .collect();
+            Ok(results)
         }
         Err(e) => {
             trace!(code, "Code ran Unsuccessfully");
