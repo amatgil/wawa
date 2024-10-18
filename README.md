@@ -53,3 +53,4 @@ quite limited, discord does not offer many much of the ansi spec).
 - [ ] Add char limit to advanced (embed) msg sender fn
 - [ ] True parallelism
 - [ ] Keep it running properly (make it a service)
+- [ ] Make sure short arrays don't become audio
