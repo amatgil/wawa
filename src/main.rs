@@ -5,9 +5,9 @@ use serenity::{all::Ready, async_trait, model::channel::Message, prelude::*};
 use tracing::{debug, info, instrument, span, trace, Level};
 use wawa::*;
 
-const SELF_HANDLE: LazyLock<String> =
+static SELF_HANDLE: LazyLock<String> =
     LazyLock::new(|| dotenv::var("BOT_SELF_HANDLE").unwrap_or_else(|_| "wawa#0280".into()));
-const SELF_ID: LazyLock<u64> =
+static SELF_ID: LazyLock<u64> =
     LazyLock::new(|| match dotenv::var("BOT_SELF_ID").map(|str| str.parse()) {
         Ok(Ok(id)) => id,
         _ => 1295816766446108795,
@@ -44,7 +44,7 @@ async fn handle_message(ctx: Context, msg: Message) {
             "ping" => handle_ping(msg, ctx.http).await,
             "v" | "ver" | "version" => handle_version(msg, ctx.http).await,
             "h" | "help" => handle_help(msg, ctx.http).await,
-            "f" | "fmt" => handle_fmt(msg, ctx.http, s[space_idx..].trim()).await,
+            "f" | "fmt" | "format" => handle_fmt(msg, ctx.http, s[space_idx..].trim()).await,
             "p" | "pad" => handle_pad(msg, ctx.http, s[space_idx..].trim()).await,
             "d" | "doc" | "docs" | "what" => {
                 handle_docs(msg, ctx.http, s[space_idx..].trim()).await

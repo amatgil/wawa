@@ -83,14 +83,13 @@ pub fn run_uiua(code: &str) -> Result<Vec<OutputItem>, String> {
             if stack_len > MAX_STACK_VALS_DISPLAYED {
                 stack.truncate(MAX_STACK_VALS_DISPLAYED);
             }
-            let results: Vec<_> = stack
+            Ok(stack
                 .into_iter()
                 .map(|val| val.into())
                 .chain((stack_len > MAX_STACK_VALS_DISPLAYED).then(|| {
                     OutputItem::Continuation((stack_len - MAX_STACK_VALS_DISPLAYED) as u32)
                 }))
-                .collect();
-            Ok(results)
+                .collect())
         }
         Err(e) => {
             trace!(code, "Code ran Unsuccessfully");
@@ -160,9 +159,8 @@ fn print_docs(line: &PrimDocLine) -> String {
             let text = format!(
                 "{}\n{}",
                 e.input(),
-                //out.lines().map(|l| format!("# {l}\n")).collect::<String>()
                 out.lines().fold(String::new(), |mut out, l| {
-                    let _ = write!(out, "# {l}\n");
+                    let _ = writeln!(out, "# {l}\n");
                     out
                 })
             );

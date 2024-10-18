@@ -1,3 +1,4 @@
+use std::fmt::Write;
 use tracing::trace;
 use uiua::{PrimClass, Primitive, SpanKind};
 
@@ -86,83 +87,77 @@ fn with_style(s: &str, ansi: AnsiState) -> String {
 pub fn highlight_code(code: &str) -> String {
     let spans: Vec<_> = uiua::lsp::spans(code).0;
     let mut last_cursor: u32 = 0;
-    let mut r: String = spans
-        .into_iter()
-        .map(|s| {
-            let newlines_skipped = code
-                .bytes()
-                .skip(last_cursor as usize)
-                .take(s.span.start.byte_pos as usize - last_cursor as usize)
-                .filter(|c| *c == b'\n')
-                .count();
-            let text = &code[s.span.start.byte_pos as usize..s.span.end.byte_pos as usize];
-            last_cursor = s.span.end.byte_pos;
+    let mut r: String = spans.into_iter().fold(String::new(), |mut out, s| {
+        let newlines_skipped = code
+            .bytes()
+            .skip(last_cursor as usize)
+            .take(s.span.start.byte_pos as usize - last_cursor as usize)
+            .filter(|c| *c == b'\n')
+            .count();
+        let text = &code[s.span.start.byte_pos as usize..s.span.end.byte_pos as usize];
+        last_cursor = s.span.end.byte_pos;
 
-            let fmtd = match s.value {
-                SpanKind::Primitive(p, sig) => print_prim(p, sig),
-                SpanKind::String => with_style(text, AnsiState::just_color(AnsiColor::Cyan)),
-                SpanKind::Number => with_style(
-                    text,
-                    AnsiState {
-                        color: AnsiColor::Red,
-                        bold: true,
-                        ..Default::default()
-                    },
-                ),
-                SpanKind::Comment => with_style(
-                    text,
-                    AnsiState {
-                        color: AnsiColor::Gray,
-                        dim: true,
-                        ..Default::default()
-                    },
-                ),
-                SpanKind::OutputComment => with_style(
-                    text,
-                    AnsiState {
-                        color: AnsiColor::White,
-                        dim: true,
-                        ..Default::default()
-                    },
-                ),
-                SpanKind::Strand => with_style(text, AnsiState::just_color(AnsiColor::White)),
-                SpanKind::Ident { .. } => with_style(text, AnsiState::default()),
-                SpanKind::Label => with_style(
-                    text,
-                    AnsiState {
-                        color: AnsiColor::White,
-                        bold: true,
-                        italic: true,
-                        dim: true,
-                        blink: true,
-                        ..Default::default()
-                    },
-                ),
-                SpanKind::Signature => with_style(text, AnsiState::default()),
-                SpanKind::Whitespace => with_style(text, AnsiState::default()),
-                SpanKind::Placeholder(..) => with_style(text, AnsiState::default()),
-                SpanKind::Delimiter => with_style(text, AnsiState::default()),
-                SpanKind::FuncDelim(..) => with_style(text, AnsiState::default()),
-                SpanKind::ImportSrc(..) => with_style(text, AnsiState::default()),
-                SpanKind::Subscript(prim, Some(x)) => {
-                    let subs_text: String = (x.to_string().chars())
-                        .map(|c| uiua::SUBSCRIPT_NUMS[(c as u32 as u8 - b'0') as usize])
-                        .collect();
-                    let style = prim
-                        .map(|p| style_of_prim(p, p.signature().map(|s| s.args)))
-                        .unwrap_or_default();
-                    with_style(&subs_text, style)
-                }
-                SpanKind::Subscript(_, None) => with_style(text, AnsiState::default()),
-                SpanKind::Obverse(..) => with_style(text, AnsiState::default()),
-            };
-            format!(
-                "{}{}",
-                "\n".repeat(newlines_skipped),
-                fmtd
-            )
-        })
-        .collect();
+        let fmtd = match s.value {
+            SpanKind::Primitive(p, sig) => print_prim(p, sig),
+            SpanKind::String => with_style(text, AnsiState::just_color(AnsiColor::Cyan)),
+            SpanKind::Number => with_style(
+                text,
+                AnsiState {
+                    color: AnsiColor::Red,
+                    bold: true,
+                    ..Default::default()
+                },
+            ),
+            SpanKind::Comment => with_style(
+                text,
+                AnsiState {
+                    color: AnsiColor::Gray,
+                    dim: true,
+                    ..Default::default()
+                },
+            ),
+            SpanKind::OutputComment => with_style(
+                text,
+                AnsiState {
+                    color: AnsiColor::White,
+                    dim: true,
+                    ..Default::default()
+                },
+            ),
+            SpanKind::Strand => with_style(text, AnsiState::just_color(AnsiColor::White)),
+            SpanKind::Ident { .. } => with_style(text, AnsiState::default()),
+            SpanKind::Label => with_style(
+                text,
+                AnsiState {
+                    color: AnsiColor::White,
+                    bold: true,
+                    italic: true,
+                    dim: true,
+                    blink: true,
+                    ..Default::default()
+                },
+            ),
+            SpanKind::Signature => with_style(text, AnsiState::default()),
+            SpanKind::Whitespace => with_style(text, AnsiState::default()),
+            SpanKind::Placeholder(..) => with_style(text, AnsiState::default()),
+            SpanKind::Delimiter => with_style(text, AnsiState::default()),
+            SpanKind::FuncDelim(..) => with_style(text, AnsiState::default()),
+            SpanKind::ImportSrc(..) => with_style(text, AnsiState::default()),
+            SpanKind::Subscript(prim, Some(x)) => {
+                let subs_text: String = (x.to_string().chars())
+                    .map(|c| uiua::SUBSCRIPT_NUMS[(c as u32 as u8 - b'0') as usize])
+                    .collect();
+                let style = prim
+                    .map(|p| style_of_prim(p, p.signature().map(|s| s.args)))
+                    .unwrap_or_default();
+                with_style(&subs_text, style)
+            }
+            SpanKind::Subscript(_, None) => with_style(text, AnsiState::default()),
+            SpanKind::Obverse(..) => with_style(text, AnsiState::default()),
+        };
+        let _ = write!(out, "{}{}", "\n".repeat(newlines_skipped), fmtd);
+        out
+    });
 
     if r.is_empty() {
         trace!(?code, "Result of highlighting was empty");
@@ -197,8 +192,6 @@ fn style_of_prim(prim: Primitive, sig: Option<usize>) -> AnsiState {
         bold: true,
         ..Default::default()
     };
-
-    
 
     match prim.class() {
         PrimClass::Stack | PrimClass::Debug if prim.modifier_args().is_none() => None,
