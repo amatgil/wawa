@@ -50,7 +50,7 @@ async fn handle_message(ctx: Context, msg: Message) {
             "d" | "doc" | "docs" | "what" => {
                 handle_docs(msg, ctx.http, &s[space_idx..].trim()).await
             }
-            "e" | "emojify" => todo!("Not yet done"),
+            "e" | "emojify" => handle_emojification(msg, ctx.http, &s[space_idx..].trim()).await,
             "r" | "run" => handle_run(msg, ctx.http, &s[space_idx..].trim()).await,
             unrec => handle_unrecognized(msg, ctx.http, unrec).await,
         }

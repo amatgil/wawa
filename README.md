@@ -35,8 +35,7 @@ quite limited, discord does not offer many much of the ansi spec).
 - [X] have `fmt`'s colors look good
 - [X] Catch messages that are too long
 - [X] Audio embeds (don't just crash)
-- [ ] Image embeds (don't just crash)
-    - `value_to_image_bytes / value_to_gif_bytes`
+- [X] Image embeds (don't just crash)
 - [ ] Gif embeds (don't just crash)
 - [X] Short summary of function in `w! docs`
 - [X] Write out help
@@ -53,4 +52,4 @@ quite limited, discord does not offer many much of the ansi spec).
 - [ ] Add char limit to advanced (embed) msg sender fn
 - [ ] True parallelism
 - [ ] Keep it running properly (make it a service)
-- [ ] Make sure short arrays don't become audio
+- [X] Make sure short arrays don't become audio

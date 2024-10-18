@@ -208,6 +208,11 @@ pub async fn handle_docs(msg: Message, http: Arc<Http>, code: &str) {
     }
 }
 #[instrument(skip(msg, http))]
+pub async fn handle_emojification(msg: Message, http: Arc<Http>, code: &str) {
+    send_message(msg, &http, "Emojification hasn't been completed yet").await;
+}
+
+#[instrument(skip(msg, http))]
 pub async fn handle_unrecognized(msg: Message, http: Arc<Http>, code: &str) {
     trace!(
         user = msg.author.name,
