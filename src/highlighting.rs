@@ -1,5 +1,5 @@
 use tracing::trace;
-use uiua::{PrimClass, PrimDocFragment, PrimDocLine, Primitive, Signature, SpanKind, Uiua};
+use uiua::{PrimClass, Primitive, SpanKind};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, Default)]
@@ -158,15 +158,13 @@ pub fn highlight_code(code: &str) -> String {
             };
             format!(
                 "{}{}",
-                std::iter::repeat('\n')
-                    .take(newlines_skipped)
-                    .collect::<String>(),
+                "\n".repeat(newlines_skipped),
                 fmtd
             )
         })
         .collect();
 
-    if r == "" {
+    if r.is_empty() {
         trace!(?code, "Result of highlighting was empty");
         r = "<Empty code>".into();
     } else {
@@ -200,7 +198,9 @@ fn style_of_prim(prim: Primitive, sig: Option<usize>) -> AnsiState {
         ..Default::default()
     };
 
-    let style = match prim.class() {
+    
+
+    match prim.class() {
         PrimClass::Stack | PrimClass::Debug if prim.modifier_args().is_none() => None,
         PrimClass::Constant => Some(constant),
         _ => {
@@ -216,9 +216,7 @@ fn style_of_prim(prim: Primitive, sig: Option<usize>) -> AnsiState {
             }
         }
     }
-    .unwrap_or(AnsiState::default());
-
-    style
+    .unwrap_or(AnsiState::default())
 }
 
 fn print_prim(prim: Primitive, sig: Option<usize>) -> String {

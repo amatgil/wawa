@@ -1,9 +1,8 @@
 pub use std::sync::Arc;
-use std::{sync::LazyLock, time::Duration};
+use std::sync::LazyLock;
 
-use dotenv;
 use serenity::{all::Ready, async_trait, model::channel::Message, prelude::*};
-use tracing::{debug, event, info, instrument, trace, Level};
+use tracing::{debug, info, instrument, trace};
 use wawa::*;
 
 const SELF_HANDLE: LazyLock<String> =
@@ -39,19 +38,19 @@ async fn handle_message(ctx: Context, msg: Message) {
         let space_idx = s
             .bytes()
             .position(|c| c.is_ascii_whitespace())
-            .unwrap_or_else(|| s.len());
+            .unwrap_or(s.len());
         debug!(cmd = s[0..space_idx].trim(), "Parsing command");
         match s[0..space_idx].trim() {
             "ping" => handle_ping(msg, ctx.http).await,
             "v" | "ver" | "version" => handle_version(msg, ctx.http).await,
             "h" | "help" => handle_help(msg, ctx.http).await,
-            "f" | "fmt" => handle_fmt(msg, ctx.http, &s[space_idx..].trim()).await,
-            "p" | "pad" => handle_pad(msg, ctx.http, &s[space_idx..].trim()).await,
+            "f" | "fmt" => handle_fmt(msg, ctx.http, s[space_idx..].trim()).await,
+            "p" | "pad" => handle_pad(msg, ctx.http, s[space_idx..].trim()).await,
             "d" | "doc" | "docs" | "what" => {
-                handle_docs(msg, ctx.http, &s[space_idx..].trim()).await
+                handle_docs(msg, ctx.http, s[space_idx..].trim()).await
             }
-            "e" | "emojify" => handle_emojification(msg, ctx.http, &s[space_idx..].trim()).await,
-            "r" | "run" => handle_run(msg, ctx.http, &s[space_idx..].trim()).await,
+            "e" | "emojify" => handle_emojification(msg, ctx.http, s[space_idx..].trim()).await,
+            "r" | "run" => handle_run(msg, ctx.http, s[space_idx..].trim()).await,
             unrec => handle_unrecognized(msg, ctx.http, unrec).await,
         }
     } else {

@@ -53,3 +53,4 @@ quite limited, discord does not offer many much of the ansi spec).
 - [ ] True parallelism
 - [ ] Keep it running properly (make it a service)
 - [X] Make sure short arrays don't become audio
+- [ ] Preserve spaces, not just newlines, in input

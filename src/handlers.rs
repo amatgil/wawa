@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::*;
 use serenity::all::{
-    Builder, CreateAllowedMentions, CreateAttachment, CreateMessage, Embed, Http, Message,
+    CreateAllowedMentions, CreateAttachment, CreateMessage, Embed, Http, Message,
 };
 use std::sync::LazyLock;
 use tracing::{debug, error, info, instrument, trace};
@@ -38,8 +38,7 @@ Ping <@328851809357791232> for any questions or if you want the version to get b
 
 static MAX_FN_LEN: LazyLock<usize> = LazyLock::new(|| {
     uiua::PrimClass::all()
-        .map(|pc| pc.primitives())
-        .flatten()
+        .flat_map(|pc| pc.primitives())
         .map(|p| {
             p.names()
                 .text
@@ -146,7 +145,7 @@ pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
     let result = if output.contains("```") {
         info!(?output, "Output contained triple backticks, denying");
         "Output contained triple backticks, which I disallow".to_string()
-    } else if output == "" {
+    } else if output.is_empty() {
         trace!("Resulting stack was empty");
         "<Empty stack>".to_string()
     } else {

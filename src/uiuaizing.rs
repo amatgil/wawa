@@ -13,7 +13,7 @@ use std::sync::LazyLock;
 const MIN_AUTO_IMAGE_DIM: usize = 30;
 const MAX_STACK_VALS_DISPLAYED: usize = 10;
 const DEFAULT_EXECUTION_LIMIT: Duration = Duration::from_secs(2);
-const EMOJI_IDS: &'static str = include_str!("../assets/glyphlist.txt");
+const EMOJI_IDS: &str = include_str!("../assets/glyphlist.txt");
 static EMOJI_MAP: LazyLock<HashMap<&str, &str>> = LazyLock::new(|| {
     EMOJI_IDS
         .lines()
@@ -43,7 +43,7 @@ pub enum OutputItem {
 impl From<uiua::Value> for OutputItem {
     fn from(value: uiua::Value) -> Self {
         fn try_from_ogg(value: &Value) -> Result<OutputItem, Box<dyn std::error::Error>> {
-            let channels: Vec<Vec<f32>> = value_to_audio_channels(&value)?
+            let channels: Vec<Vec<f32>> = value_to_audio_channels(value)?
                 .into_iter()
                 .map(|v| v.into_iter().map(|x| x as f32).collect())
                 .collect();
@@ -110,7 +110,7 @@ pub fn run_uiua(code: &str) -> Result<Vec<OutputItem>, String> {
         }
         Err(e) => {
             trace!(code, "Code ran Unsuccessfully");
-            return Err(format!("Error while running: {e} "));
+            Err(format!("Error while running: {e} "))
         }
     }
 }
@@ -152,9 +152,9 @@ fn print_doc_frag(frag: &PrimDocFragment) -> String {
         PrimDocFragment::Strong(t) => format!("**{t}**"),
         PrimDocFragment::Primitive { prim, named } => {
             if *named {
-                format!("{} `{}`", print_emoji(&prim), prim.name())
+                format!("{} `{}`", print_emoji(prim), prim.name())
             } else {
-                print_emoji(&prim)
+                print_emoji(prim)
             }
         }
         PrimDocFragment::Link { text, url } => format!("[{text}]({url})"),
@@ -164,7 +164,7 @@ fn print_doc_frag(frag: &PrimDocFragment) -> String {
 fn print_docs(line: &PrimDocLine) -> String {
     match line {
         PrimDocLine::Text(vs) => vs
-            .into_iter()
+            .iter()
             .map(print_doc_frag)
             .collect::<Vec<String>>()
             .join(" "),
@@ -179,7 +179,7 @@ fn print_docs(line: &PrimDocLine) -> String {
                 out.lines().map(|l| format!("# {l}\n")).collect::<String>()
             );
 
-            format!("{}", highlight_code(&text))
+            highlight_code(&text).to_string()
         }
     }
 }
