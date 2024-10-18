@@ -10,8 +10,6 @@ use base64::engine::general_purpose::URL_SAFE;
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-mod encode;
-
 const MIN_AUTO_IMAGE_DIM: usize = 30;
 const MAX_STACK_VALS_DISPLAYED: usize = 10;
 const DEFAULT_EXECUTION_LIMIT: Duration = Duration::from_secs(2);
@@ -172,7 +170,11 @@ fn print_docs(line: &PrimDocLine) -> String {
                 Ok(l) => l,
                 Err(l) => l.to_string(),
             };
-            let text = format!("{}\n# {}", e.input(), out);
+            let text = format!(
+                "{}\n{}",
+                e.input(),
+                out.lines().map(|l| format!("# {l}\n")).collect::<String>()
+            );
 
             format!("{}", highlight_code(&text))
         }
