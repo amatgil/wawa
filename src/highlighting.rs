@@ -149,7 +149,7 @@ pub fn highlight_code(code: &str) -> String {
                         .map(|c| uiua::SUBSCRIPT_NUMS[(c as u32 as u8 - b'0') as usize])
                         .collect();
                     let style = prim
-                        .map(|p| style_of_prim(p, p.signature()))
+                        .map(|p| style_of_prim(p, p.signature().map(|s| s.args)))
                         .unwrap_or_default();
                     with_style(&subs_text, style)
                 }
@@ -176,7 +176,7 @@ pub fn highlight_code(code: &str) -> String {
     r
 }
 
-fn style_of_prim(prim: Primitive, sig: Option<Signature>) -> AnsiState {
+fn style_of_prim(prim: Primitive, sig: Option<usize>) -> AnsiState {
     let noadic = AnsiState::just_color(AnsiColor::Red);
     let monadic = AnsiState {
         color: AnsiColor::Green,
@@ -207,7 +207,7 @@ fn style_of_prim(prim: Primitive, sig: Option<Signature>) -> AnsiState {
             if let Some(margs) = prim.modifier_args() {
                 Some(if margs == 1 { monadic_mod } else { dyadic_mod })
             } else {
-                match sig.map(|sig| sig.args).or(prim.args()) {
+                match sig.or(prim.args()) {
                     Some(0) => Some(noadic),
                     Some(1) => Some(monadic),
                     Some(2) => Some(dyadic),
@@ -221,7 +221,7 @@ fn style_of_prim(prim: Primitive, sig: Option<Signature>) -> AnsiState {
     style
 }
 
-fn print_prim(prim: Primitive, sig: Option<Signature>) -> String {
+fn print_prim(prim: Primitive, sig: Option<usize>) -> String {
     let style = style_of_prim(prim, sig);
 
     with_style(&prim.to_string(), style)
