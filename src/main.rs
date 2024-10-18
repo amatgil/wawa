@@ -1,5 +1,5 @@
 pub use std::sync::Arc;
-use std::sync::LazyLock;
+use std::{sync::LazyLock, time::Duration};
 
 use dotenv;
 use serenity::{all::Ready, async_trait, model::channel::Message, prelude::*};
@@ -75,13 +75,11 @@ async fn handle_message(ctx: Context, msg: Message) {
 #[async_trait]
 impl EventHandler for Handler {
     async fn message(&self, ctx: Context, msg: Message) {
-        tokio::spawn(async move {
-            handle_message(ctx, msg).await;
-        });
+        tokio::spawn(handle_message(ctx, msg));
     }
 
     async fn ready(&self, _: Context, ready: Ready) {
-        println!("{} is connected", ready.user.name)
+        info!(name = ready.user.name, "{} is connected")
     }
 }
 

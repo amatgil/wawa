@@ -202,7 +202,7 @@ pub async fn handle_unrecognized(msg: Message, http: Arc<Http>, code: &str) {
     );
     let unrec = code.trim();
     let shortened = unrec.chars().take(10).collect::<String>();
-    eprintln!("Someone sent an unrecognized command: '{shortened}'");
+    trace!("Someone sent an unrecognized command: '{shortened}'");
     send_message(
         msg,
         &http,

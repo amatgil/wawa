@@ -162,7 +162,8 @@ fn print_emoji(c: &Primitive) -> String {
     } else {
         let spaceless_name = c.name().split(' ').collect::<String>();
         if let Some(id) = EMOJI_MAP.get(&*spaceless_name) {
-            format!("<:{}:{}>", spaceless_name, id)
+            //format!("<:{}:{}>", spaceless_name, id) // For when the bot has it internally
+            format!(":{}:", spaceless_name)
         } else {
             format!("<{}>", spaceless_name)
         }
