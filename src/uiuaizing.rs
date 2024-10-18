@@ -12,6 +12,7 @@ use std::sync::LazyLock;
 
 mod encode;
 
+const MIN_AUTO_IMAGE_DIM: usize = 30;
 const MAX_STACK_VALS_DISPLAYED: usize = 10;
 const DEFAULT_EXECUTION_LIMIT: Duration = Duration::from_secs(2);
 const EMOJI_IDS: &'static str = include_str!("../assets/glyphlist.txt");
@@ -32,6 +33,8 @@ static EMOJI_MAP: LazyLock<HashMap<&str, &str>> = LazyLock::new(|| {
 pub enum OutputItem {
     /// Audio, containing encoded OGG Vorbis bytes.
     Audio(Box<[u8]>),
+    /// Static image data, containing encoded PNG bytes.
+    Image(Box<[u8]>),
     /// Miscellaneous value.
     Misc(uiua::Value),
     /// "Hey, there's {n} more values!" indicator
@@ -41,10 +44,14 @@ pub enum OutputItem {
 
 impl From<uiua::Value> for OutputItem {
     fn from(value: uiua::Value) -> Self {
+        use uiua::encode::*;
         use uiua::Value;
 
         fn try_from_ogg(value: &Value) -> Result<OutputItem, Box<dyn std::error::Error>> {
-            let channels = encode::value_to_audio_channels(&value)?;
+            let channels: Vec<Vec<f32>> = value_to_audio_channels(&value)?
+                .into_iter()
+                .map(|v| v.into_iter().map(|x| x as f32).collect())
+                .collect();
             let mut sink = Vec::new();
             let mut encoder = vorbis_rs::VorbisEncoderBuilder::new(
                 std::num::NonZeroU32::new(44100).ok_or("unreachable")?,
@@ -56,8 +63,18 @@ impl From<uiua::Value> for OutputItem {
             encoder.finish()?;
             Ok(OutputItem::Audio(sink.into_boxed_slice()))
         }
+
         if let Ok(this) = try_from_ogg(&value) {
             return this;
+        }
+        if let Ok(image) = value_to_image(&value) {
+            if image.width() >= MIN_AUTO_IMAGE_DIM as u32
+                && image.height() >= MIN_AUTO_IMAGE_DIM as u32
+            {
+                if let Ok(bytes) = image_to_bytes(&image, image::ImageOutputFormat::Png) {
+                    return OutputItem::Image(bytes.into());
+                }
+            }
         }
 
         Self::Misc(value)
@@ -81,14 +98,13 @@ pub fn run_uiua(code: &str) -> Result<Vec<OutputItem>, String> {
             if stack_len > MAX_STACK_VALS_DISPLAYED {
                 stack.truncate(MAX_STACK_VALS_DISPLAYED);
             }
-            let results: Vec<_> =
-                stack
-                    .into_iter()
-                    .map(|val| val.into())
-                    .chain((stack_len > MAX_STACK_VALS_DISPLAYED).then_some(
-                        OutputItem::Continuation((stack_len - MAX_STACK_VALS_DISPLAYED) as u32),
-                    ))
-                    .collect();
+            let results: Vec<_> = stack
+                .into_iter()
+                .map(|val| val.into())
+                .chain((stack_len > MAX_STACK_VALS_DISPLAYED).then(|| {
+                    OutputItem::Continuation((stack_len - MAX_STACK_VALS_DISPLAYED) as u32)
+                }))
+                .collect();
             Ok(results)
         }
         Err(e) => {
