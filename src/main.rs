@@ -2,7 +2,7 @@ pub use std::sync::Arc;
 use std::sync::LazyLock;
 
 use serenity::{all::Ready, async_trait, model::channel::Message, prelude::*};
-use tracing::{debug, info, instrument, trace};
+use tracing::{debug, info, instrument, span, trace, Level};
 use wawa::*;
 
 const SELF_HANDLE: LazyLock<String> =
@@ -54,8 +54,11 @@ async fn handle_message(ctx: Context, msg: Message) {
             unrec => handle_unrecognized(msg, ctx.http, unrec).await,
         }
     } else {
-        // We're not a command, but we can check if the message contains an un-markdown'd link
+        let span = span!(Level::TRACE, "rulethree_handler");
+        let _enter = span.enter();
+
         trace!("Checking for pad link");
+
         let vs = extract_raw_pad_link(trimmed);
         if !vs.is_empty() {
             trace!(
@@ -67,7 +70,10 @@ async fn handle_message(ctx: Context, msg: Message) {
             info!(author = ?msg.author, "Found a pad link");
             let response = format!("You've sent a raw pad link! Please use markdown links next time (like `[this](<link>)`). For now, here is [the link you sent]({link})");
             send_message(msg, &ctx.http, &response).await;
+        } else {
+            trace!("No pad link detected");
         }
+        std::mem::drop(_enter);
     }
 }
 

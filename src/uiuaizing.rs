@@ -1,12 +1,12 @@
 use std::time::Duration;
 
 use crate::*;
+use base64::engine::general_purpose::URL_SAFE;
 use base64::Engine;
+use std::fmt::Write;
 use tracing::trace;
 use uiua::format::*;
 use uiua::{PrimDocFragment, PrimDocLine, Primitive, Uiua};
-
-use base64::engine::general_purpose::URL_SAFE;
 
 const MIN_AUTO_IMAGE_DIM: usize = 30;
 const MAX_STACK_VALS_DISPLAYED: usize = 10;
@@ -160,7 +160,11 @@ fn print_docs(line: &PrimDocLine) -> String {
             let text = format!(
                 "{}\n{}",
                 e.input(),
-                out.lines().map(|l| format!("# {l}\n")).collect::<String>()
+                //out.lines().map(|l| format!("# {l}\n")).collect::<String>()
+                out.lines().fold(String::new(), |mut out, l| {
+                    let _ = write!(out, "# {l}\n");
+                    out
+                })
             );
 
             highlight_code(&text).to_string()

@@ -161,7 +161,7 @@ pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
 
     match (finalized_text.len(), shortened_text.len()) {
         (f, _) if f < MAX_MSG_LEN => {
-            debug!(text = ?&finalized_text.chars().take(200).collect::<String>(), "Sending full-length version");
+            debug!(flen = f, text = ?&finalized_text.chars().take(200).collect::<String>(), "Sending full-length version");
             send_message_advanced(
                 msg,
                 &http,
@@ -172,7 +172,7 @@ pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
             .await;
         }
         (f, s) if f > MAX_MSG_LEN && s <= MAX_MSG_LEN => {
-            debug!(text = ?&finalized_text.chars().take(200).collect::<String>(), shortened = ?&shortened_text.chars().take(300).collect::<String>(), "Final message was too long, sending shortened version");
+            debug!(flen = f, slen = s, text = ?&finalized_text.chars().take(200).collect::<String>(), shortened = ?&shortened_text.chars().take(300).collect::<String>(), "Final message was too long, sending shortened version");
             send_message_advanced(
                 msg,
                 &http,
@@ -182,8 +182,8 @@ pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
             )
             .await;
         }
-        _ => {
-            debug!(text = ?&finalized_text.chars().take(200).collect::<String>(), "Final message AND shortened verion were too long");
+        (f, s) => {
+            debug!(flen = f, slen = s, text = ?&finalized_text.chars().take(200).collect::<String>(), "Final message AND shortened verion were too long");
             send_message(msg, &http, "Message is way too long").await;
         }
     }
@@ -283,12 +283,5 @@ fn strip_triple_ticks(mut s: &str) -> &str {
     s = s.strip_prefix("```").unwrap_or(s);
     s = s.strip_prefix("uiua").unwrap_or(s);
     s = s.strip_suffix("```").unwrap_or(s);
-    s
-}
-
-fn strip_single_ticks(mut s: &str) -> &str {
-    s = s.trim();
-    s = s.strip_prefix("`").unwrap_or(s);
-    s = s.strip_suffix("`").unwrap_or(s);
     s
 }
