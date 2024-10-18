@@ -1,10 +1,11 @@
 {
   pkgs ? import <nixpkgs> { },
+  overlays
 }:
 let
   manifest = (pkgs.lib.importTOML ./Cargo.toml).package;
   packages = with pkgs; [
-    # Empty!
+	  rust-bin.stable.latest.default
   ];
 in
 pkgs.rustPlatform.buildRustPackage {

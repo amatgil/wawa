@@ -51,3 +51,5 @@ quite limited, discord does not offer many much of the ansi spec).
 - [ ] Add space and time constraints for `w!run`
 - [ ] Unify extended message sending function
 - [ ] Add char limit to advanced (embed) msg sender fn
+- [ ] True parallelism
+- [ ] Keep it running properly (make it a service)
