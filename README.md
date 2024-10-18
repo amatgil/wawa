@@ -36,7 +36,7 @@ quite limited, discord does not offer many much of the ansi spec).
 - [X] Catch messages that are too long
 - [X] Audio embeds (don't just crash)
 - [X] Image embeds (don't just crash)
-- [ ] Gif embeds (don't just crash)
+- [X] Gif embeds (don't just crash)
 - [X] Short summary of function in `w! docs`
 - [X] Write out help
 - [X] Accept `w!cmd` syntax
@@ -56,3 +56,4 @@ quite limited, discord does not offer many much of the ansi spec).
 - [ ] Preserve spaces, not just newlines, in input
 - [ ] Log what's happening in the terminal but the contents of the code and such to disk
 - [ ] Show stdout in `w!run`
+- [ ] inline `fmt`

@@ -17,11 +17,12 @@ pub enum OutputItem {
     Audio(Box<[u8]>),
     /// Static image data, containing encoded PNG bytes.
     Image(Box<[u8]>),
+    /// Images but many of them
+    Gif(Box<[u8]>),
     /// Miscellaneous value.
     Misc(uiua::Value),
     /// "Hey, there's {n} more values!" indicator
     Continuation(u32),
-    // TODO: images, gifs, you know the drill
 }
 
 impl From<uiua::Value> for OutputItem {
@@ -45,23 +46,40 @@ impl From<uiua::Value> for OutputItem {
         use uiua::encode::*;
         use uiua::Value;
 
+        // Audio?
         if value.shape().last().is_some_and(|&n| n >= 44100 / 4)
             && matches!(&value, Value::Num(arr) if arr.elements().all(|x| x.abs() <= 5.0))
         {
             if let Ok(this) = try_from_ogg(&value) {
+                trace!("Turning audio into bytes");
                 return this;
             }
         }
+        // Image?
         if let Ok(image) = value_to_image(&value) {
             if image.width() >= MIN_AUTO_IMAGE_DIM as u32
                 && image.height() >= MIN_AUTO_IMAGE_DIM as u32
             {
                 if let Ok(bytes) = image_to_bytes(&image, image::ImageOutputFormat::Png) {
-                    return OutputItem::Image(bytes.into());
+                    trace!("Turning image into bytes");
+                    return OutputItem::Image(bytes.into_boxed_slice());
                 }
             }
         }
+        // Gif
+        if let Ok(gif) = value_to_gif_bytes(&value, 16.0) {
+            match value.shape().dims() {
+                &[f, h, w] | &[f, h, w, _]
+                    if h >= MIN_AUTO_IMAGE_DIM && w >= MIN_AUTO_IMAGE_DIM && f >= 5 =>
+                {
+                    trace!("Turning gif into bytes");
+                    return OutputItem::Gif(gif.into_boxed_slice());
+                }
+                _ => {}
+            }
+        }
 
+        trace!("Turning value into value");
         Self::Misc(value)
     }
 }

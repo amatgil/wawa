@@ -124,6 +124,14 @@ pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
                             format!("image_{}.png", attachments.len() + 1),
                         ));
                     }
+                    OutputItem::Gif(bytes) => {
+                        output
+                            .push_str(&format!("<attachment #{}: image>\n", attachments.len() + 1));
+                        attachments.push(CreateAttachment::bytes(
+                            bytes,
+                            format!("image_{}.gif", attachments.len() + 1),
+                        ));
+                    }
                     OutputItem::Misc(val) => {
                         output.push_str(&val.show());
                         output.push('\n');
