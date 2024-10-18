@@ -7,26 +7,10 @@ use uiua::format::*;
 use uiua::{PrimDocFragment, PrimDocLine, Primitive, Uiua};
 
 use base64::engine::general_purpose::URL_SAFE;
-use std::collections::HashMap;
-use std::sync::LazyLock;
 
 const MIN_AUTO_IMAGE_DIM: usize = 30;
 const MAX_STACK_VALS_DISPLAYED: usize = 10;
 const DEFAULT_EXECUTION_LIMIT: Duration = Duration::from_secs(2);
-const EMOJI_IDS: &str = include_str!("../assets/glyphlist.txt");
-static EMOJI_MAP: LazyLock<HashMap<&str, &str>> = LazyLock::new(|| {
-    EMOJI_IDS
-        .lines()
-        .map(|l| {
-            let space_idx = l
-                .bytes()
-                .position(|c| c == b' ')
-                .expect("EMOJI_IDS are malformed");
-            let (a, b) = l.split_at(space_idx);
-            (a, &b[1..])
-        })
-        .collect::<HashMap<&str, &str>>()
-});
 
 pub enum OutputItem {
     /// Audio, containing encoded OGG Vorbis bytes.
@@ -192,12 +176,7 @@ fn print_emoji(c: &Primitive) -> String {
             .unwrap_or(c.name().to_string())
     } else {
         let spaceless_name = c.name().split(' ').collect::<String>();
-        if let Some(id) = EMOJI_MAP.get(&*spaceless_name) {
-            //format!("<:{}:{}>", spaceless_name, id) // For when the bot has it internally
-            format!(":{}:", spaceless_name)
-        } else {
-            format!("<{}>", spaceless_name)
-        }
+        format!(":{}:", spaceless_name)
     }
 }
 
