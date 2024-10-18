@@ -42,9 +42,6 @@ pub enum OutputItem {
 
 impl From<uiua::Value> for OutputItem {
     fn from(value: uiua::Value) -> Self {
-        use uiua::encode::*;
-        use uiua::Value;
-
         fn try_from_ogg(value: &Value) -> Result<OutputItem, Box<dyn std::error::Error>> {
             let channels: Vec<Vec<f32>> = value_to_audio_channels(&value)?
                 .into_iter()
@@ -61,9 +58,15 @@ impl From<uiua::Value> for OutputItem {
             encoder.finish()?;
             Ok(OutputItem::Audio(sink.into_boxed_slice()))
         }
+        use uiua::encode::*;
+        use uiua::Value;
 
-        if let Ok(this) = try_from_ogg(&value) {
-            return this;
+        if value.shape().last().is_some_and(|&n| n >= 44100 / 4)
+            && matches!(&value, Value::Num(arr) if arr.elements().all(|x| x.abs() <= 5.0))
+        {
+            if let Ok(this) = try_from_ogg(&value) {
+                return this;
+            }
         }
         if let Ok(image) = value_to_image(&value) {
             if image.width() >= MIN_AUTO_IMAGE_DIM as u32
