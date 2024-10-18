@@ -88,3 +88,59 @@ pub fn value_to_audio_channels(audio: &Value) -> Result<Vec<Vec<f32>>, String> {
     }
     Ok(channels)
 }
+
+pub fn value_to_image(value: &Value) -> Result<image::DynamicImage, String> {
+    if ![2, 3].contains(&value.rank()) {
+        return Err(format!(
+            "Image must be a rank 2 or 3 numeric array, but it is a rank-{} {} array",
+            value.rank(),
+            value.type_name()
+        ));
+    }
+    let bytes = match value {
+        Value::Num(nums) => nums
+            .row_slices()
+            .flatten()
+            .map(|f| (*f * 255.0) as u8)
+            .collect(),
+        Value::Byte(bytes) => bytes
+            .row_slices()
+            .flatten()
+            .map(|&b| (b > 0) as u8 * 255)
+            .collect(),
+        _ => return Err("Image must be a numeric array".into()),
+    };
+    #[allow(clippy::match_ref_pats)]
+    let [height, width, px_size] = match value.shape().dims() {
+        &[a, b] => [a, b, 1],
+        &[a, b, c] => [a, b, c],
+        _ => unreachable!("Shape checked above"),
+    };
+    Ok(match px_size {
+        1 => image::GrayImage::from_raw(width as u32, height as u32, bytes)
+            .ok_or("Failed to create image")?
+            .into(),
+        2 => image::GrayAlphaImage::from_raw(width as u32, height as u32, bytes)
+            .ok_or("Failed to create image")?
+            .into(),
+        3 => image::RgbImage::from_raw(width as u32, height as u32, bytes)
+            .ok_or("Failed to create image")?
+            .into(),
+        4 => image::RgbaImage::from_raw(width as u32, height as u32, bytes)
+            .ok_or("Failed to create image")?
+            .into(),
+        n => {
+            return Err(format!(
+                "For a color image, the last dimension of the image array must be between 1 and 4 but it is {n}"
+            ))
+        }
+    })
+}
+
+pub fn image_to_bytes(image: &image::DynamicImage) -> Result<Vec<u8>, String> {
+    let mut bytes = std::io::Cursor::new(Vec::new());
+    image
+        .write_to(&mut bytes, image::ImageFormat::Png)
+        .map_err(|e| format!("Failed to write image: {e}"))?;
+    Ok(bytes.into_inner())
+}

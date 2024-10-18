@@ -32,6 +32,8 @@ static EMOJI_MAP: LazyLock<HashMap<&str, &str>> = LazyLock::new(|| {
 pub enum OutputItem {
     /// Audio, containing encoded OGG Vorbis bytes.
     Audio(Box<[u8]>),
+    /// Static image data, containing encoded PNG bytes.
+    Image(Box<[u8]>),
     /// Miscellaneous value.
     Misc(uiua::Value),
     /// "Hey, there's {n} more values!" indicator
@@ -59,6 +61,11 @@ impl From<uiua::Value> for OutputItem {
         if let Ok(this) = try_from_ogg(&value) {
             return this;
         }
+        if let Ok(image) =
+            encode::value_to_image(&value).and_then(|image| encode::image_to_bytes(&image))
+        {
+            return Self::Image(image.into_boxed_slice());
+        }
 
         Self::Misc(value)
     }
@@ -81,14 +88,13 @@ pub fn run_uiua(code: &str) -> Result<Vec<OutputItem>, String> {
             if stack_len > MAX_STACK_VALS_DISPLAYED {
                 stack.truncate(MAX_STACK_VALS_DISPLAYED);
             }
-            let results: Vec<_> =
-                stack
-                    .into_iter()
-                    .map(|val| val.into())
-                    .chain((stack_len > MAX_STACK_VALS_DISPLAYED).then_some(
-                        OutputItem::Continuation((stack_len - MAX_STACK_VALS_DISPLAYED) as u32),
-                    ))
-                    .collect();
+            let results: Vec<_> = stack
+                .into_iter()
+                .map(|val| val.into())
+                .chain((stack_len > MAX_STACK_VALS_DISPLAYED).then(|| {
+                    OutputItem::Continuation((stack_len - MAX_STACK_VALS_DISPLAYED) as u32)
+                }))
+                .collect();
             Ok(results)
         }
         Err(e) => {

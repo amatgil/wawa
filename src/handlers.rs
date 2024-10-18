@@ -111,12 +111,20 @@ pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
         Ok(result) => {
             for item in result {
                 match item {
-                    OutputItem::Audio(blah) => {
+                    OutputItem::Audio(bytes) => {
                         output
                             .push_str(&format!("<attachment #{}: audio>\n", attachments.len() + 1));
                         attachments.push(CreateAttachment::bytes(
-                            blah,
-                            format!("audio_{}.ogg", attachments.len()),
+                            bytes,
+                            format!("audio_{}.ogg", attachments.len() + 1),
+                        ));
+                    }
+                    OutputItem::Image(bytes) => {
+                        output
+                            .push_str(&format!("<attachment #{}: image>\n", attachments.len() + 1));
+                        attachments.push(CreateAttachment::bytes(
+                            bytes,
+                            format!("image_{}.png", attachments.len() + 1),
                         ));
                     }
                     OutputItem::Misc(val) => {
