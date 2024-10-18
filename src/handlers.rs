@@ -52,6 +52,9 @@ static MAX_FN_LEN: LazyLock<usize> = LazyLock::new(|| {
         .unwrap() // There _are_ primitives
 });
 
+/// The color are: pink, red, yellow, green, teal, blue
+const OUTPUT_COLOR_CYCLE: [u8; 6] = [34, 36, 32, 33, 31, 35];
+
 // HANDLERS
 #[instrument(skip_all)]
 pub async fn handle_ping(msg: Message, http: Arc<Http>) {
@@ -109,7 +112,7 @@ pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
     let mut attachments = Vec::new();
     match result {
         Ok(result) => {
-            for item in result {
+            for (i, item) in result.into_iter().enumerate() {
                 match item {
                     OutputItem::Audio(blah) => {
                         output
@@ -120,7 +123,11 @@ pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
                         ));
                     }
                     OutputItem::Misc(val) => {
-                        output.push_str(&val.show());
+                        output.push_str(&format!(
+                            "\x1b[{}m{}\x1b[0m",
+                            OUTPUT_COLOR_CYCLE[i % OUTPUT_COLOR_CYCLE.len()],
+                            val.show()
+                        ));
                         output.push('\n');
                     }
                     OutputItem::Continuation(more) => {
@@ -147,7 +154,7 @@ pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
             ?output,
             "Sending correctly formed result of running the code"
         );
-        format!("```\n{output}\n```")
+        format!("```ansi\n{output}\n```")
     };
 
     let finalized_text = format!("Source:\n{source}\nReturns:\n{result}");
