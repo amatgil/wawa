@@ -36,6 +36,7 @@ quite limited, discord does not offer many much of the ansi spec).
 - [X] Catch messages that are too long
 - [X] Audio embeds (don't just crash)
 - [ ] Image embeds (don't just crash)
+    - `value_to_image_bytes / value_to_gif_bytes`
 - [ ] Gif embeds (don't just crash)
 - [X] Short summary of function in `w! docs`
 - [X] Write out help
