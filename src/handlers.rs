@@ -1,9 +1,7 @@
 use std::sync::Arc;
 
 use crate::*;
-use serenity::all::{
-    CreateAllowedMentions, CreateAttachment, CreateMessage, Embed, Http, Message,
-};
+use serenity::all::{CreateAllowedMentions, CreateAttachment, CreateMessage, Embed, Http, Message};
 use std::sync::LazyLock;
 use tracing::{debug, error, info, instrument, trace};
 
@@ -174,7 +172,7 @@ pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
             .await;
         }
         (f, s) if f > MAX_MSG_LEN && s <= MAX_MSG_LEN => {
-            debug!(text = ?&finalized_text.chars().take(200).collect::<String>(), "Final message was too long, sending shortened version");
+            debug!(text = ?&finalized_text.chars().take(200).collect::<String>(), shortened = ?&shortened_text.chars().take(300).collect::<String>(), "Final message was too long, sending shortened version");
             send_message_advanced(
                 msg,
                 &http,

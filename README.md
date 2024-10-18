@@ -54,3 +54,5 @@ quite limited, discord does not offer many much of the ansi spec).
 - [ ] Keep it running properly (make it a service)
 - [X] Make sure short arrays don't become audio
 - [ ] Preserve spaces, not just newlines, in input
+- [ ] Log what's happening in the terminal but the contents of the code and such to disk
+- [ ] Show stdout in `w!run`
