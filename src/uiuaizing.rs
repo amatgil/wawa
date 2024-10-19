@@ -1,30 +1,18 @@
 use std::time::Duration;
 
+use crate::backend::{NativisedWebBackend, OutputItem};
 use crate::*;
 use base64::engine::general_purpose::URL_SAFE;
 use base64::Engine;
 use std::fmt::Write;
 use std::str;
 use tracing::trace;
-use uiua::{format::*, SafeSys};
+use uiua::{format::*, SafeSys, SysBackend};
 use uiua::{PrimDocFragment, PrimDocLine, Primitive, Uiua};
 
 const MIN_AUTO_IMAGE_DIM: usize = 30;
 const MAX_STACK_VALS_DISPLAYED: usize = 10;
 const DEFAULT_EXECUTION_LIMIT: Duration = Duration::from_secs(2);
-
-pub enum OutputItem {
-    /// Audio, containing encoded OGG Vorbis bytes.
-    Audio(Box<[u8]>),
-    /// Static image data, containing encoded PNG bytes.
-    Image(Box<[u8]>),
-    /// Images but many of them
-    Gif(Box<[u8]>),
-    /// Miscellaneous value.
-    Misc(uiua::Value),
-    /// "Hey, there's {n} more values!" indicator
-    Continuation(u32),
-}
 
 impl From<uiua::Value> for OutputItem {
     fn from(value: uiua::Value) -> Self {
@@ -42,7 +30,7 @@ impl From<uiua::Value> for OutputItem {
             .build()?;
             encoder.encode_audio_block(channels)?;
             encoder.finish()?;
-            Ok(OutputItem::Audio(sink.into_boxed_slice()))
+            Ok(OutputItem::Audio(sink.into(), None))
         }
         use uiua::encode::*;
         use uiua::Value;
@@ -63,7 +51,7 @@ impl From<uiua::Value> for OutputItem {
             {
                 if let Ok(bytes) = image_to_bytes(&image, image::ImageOutputFormat::Png) {
                     trace!("Turning image into bytes");
-                    return OutputItem::Image(bytes.into_boxed_slice());
+                    return OutputItem::Image(bytes.into(), None);
                 }
             }
         }
@@ -74,25 +62,25 @@ impl From<uiua::Value> for OutputItem {
                     if h >= MIN_AUTO_IMAGE_DIM && w >= MIN_AUTO_IMAGE_DIM && f >= 5 =>
                 {
                     trace!("Turning gif into bytes");
-                    return OutputItem::Gif(gif.into_boxed_slice());
+                    return OutputItem::Gif(gif.into(), None);
                 }
                 _ => {}
             }
         }
 
-        trace!("Turning value into value");
-        Self::Misc(value)
+        OutputItem::String(value.to_string())
     }
 }
 
-/// Returns (prettified stdout, top-most elements of stack)
-pub fn run_uiua(code: &str) -> Result<(Option<String>, Vec<OutputItem>), String> {
+/// Returns (stdout, top-most elements of stack)
+pub fn run_uiua(code: &str) -> Result<(Vec<OutputItem>, Vec<OutputItem>), String> {
     trace!(code, "Starting to execute uiua code");
     if code.is_empty() {
         return Err("Cannot run empty code".into());
     }
 
-    let mut runtime = Uiua::with_safe_sys().with_execution_limit(DEFAULT_EXECUTION_LIMIT);
+    let mut runtime = Uiua::with_backend(NativisedWebBackend::default())
+        .with_execution_limit(DEFAULT_EXECUTION_LIMIT);
     let exp_code = &format!("# Experimental!\n{code}");
 
     match runtime.run_str(exp_code) {
@@ -101,11 +89,14 @@ pub fn run_uiua(code: &str) -> Result<(Option<String>, Vec<OutputItem>), String>
             trace!(code, "Code ran successfully");
             let stack = runtime.take_stack();
             let stack_len = stack.len();
-            let stdout_raw = runtime.take_backend::<SafeSys>().unwrap().take_stdout();
-            let stdout = str::from_utf8(&stdout_raw).ok();
+            let stdout: Vec<_> = runtime
+                .take_backend::<NativisedWebBackend>()
+                .unwrap()
+                .current_stdout()
+                .to_vec();
 
             Ok((
-                stdout.map(|s| s.to_string()),
+                stdout,
                 stack
                     .into_iter()
                     .take(MAX_STACK_VALS_DISPLAYED)

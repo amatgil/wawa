@@ -3,16 +3,14 @@
 use std::{
     any::Any,
     cell::RefCell,
-    collections::{BTreeSet, HashMap},
+    collections::HashMap,
     io::Cursor,
-    path::{Path, PathBuf},
+    path::PathBuf,
     sync::{Mutex, OnceLock},
     time::Duration,
 };
 
-use tokio::task::spawn_local;
-use tracing::info;
-use uiua::{now, GitTarget, Handle, Report, SysBackend, EXAMPLE_TXT, EXAMPLE_UA};
+use uiua::{now, Report, SysBackend, EXAMPLE_TXT, EXAMPLE_UA};
 
 static START_TIME: OnceLock<f64> = OnceLock::new();
 
@@ -33,6 +31,12 @@ thread_local! {
     );
 }
 
+impl NativisedWebBackend {
+    pub fn current_stdout(&self) -> Vec<OutputItem> {
+        let t = self.stdout.lock().unwrap();
+        t.clone()
+    }
+}
 /*
 fn weewuh() {
     let i = (now() % 1.0 * 100.0) as u32;
@@ -57,6 +61,7 @@ impl Default for NativisedWebBackend {
     }
 }
 
+#[derive(Debug, Clone)]
 pub enum OutputItem {
     String(String),
     Svg(String),
@@ -67,6 +72,7 @@ pub enum OutputItem {
     Faint(String),
     Classed(&'static str, String),
     Separator,
+    Continuation(u32),
 }
 
 impl OutputItem {
