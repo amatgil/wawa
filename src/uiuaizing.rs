@@ -176,7 +176,7 @@ fn print_docs(line: &PrimDocLine) -> String {
                 "{}\n{}",
                 e.input(),
                 out.lines().fold(String::new(), |mut out, l| {
-                    let _ = writeln!(out, "# {l}\n");
+                    let _ = writeln!(out, "# {l}");
                     out
                 })
             );
