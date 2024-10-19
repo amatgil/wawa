@@ -6,7 +6,7 @@ use base64::engine::general_purpose::URL_SAFE;
 use base64::Engine;
 use std::fmt::Write;
 use std::str;
-use tracing::trace;
+use tracing::{error, trace};
 use uiua::format::*;
 use uiua::{PrimDocFragment, PrimDocLine, Primitive, Uiua};
 
@@ -200,10 +200,24 @@ fn print_emoji(c: &Primitive) -> String {
 
 pub fn format_and_get_pad_link(code: &str) -> String {
     let config = FormatConfig::default();
-    let formatted = format_str(code, &config).unwrap().output;
+    let formatted = match format_str(code, &config) {
+        Ok(s) => s.output,
+        Err(e) => {
+            error!(?e, "Error while formatting line for pad");
+            return format!("Internal uiua error while formatting source: `{e}`");
+        }
+    };
 
     let encoded = URL_SAFE.encode(code);
     let link = format!("https://www.uiua.org/pad?src={}__{encoded}", uiua::VERSION);
 
-    format!("[pad]({link}) for: {}", highlight_code(&formatted))
+    let result = format!("[pad]({link}) for: {}", highlight_code(&formatted));
+
+    if result.len() <= MAX_MSG_LEN {
+        trace!("Sending pad message normally");
+        result
+    } else {
+        trace!("Pad message was too long, skipping source");
+        format!("[pad]({link})")
+    }
 }

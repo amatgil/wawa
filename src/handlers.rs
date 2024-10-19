@@ -6,7 +6,7 @@ use std::fmt::Write;
 use std::sync::LazyLock;
 use tracing::{debug, error, info, instrument, trace};
 
-const MAX_MSG_LEN: usize = 1700;
+pub const MAX_MSG_LEN: usize = 1850;
 
 const HELP_MESSAGE: &str = r#"# wawa
 Your friendly neighbourhood uiua bot!
