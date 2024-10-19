@@ -57,3 +57,4 @@ quite limited, discord does not offer many much of the ansi spec).
 - [ ] Log what's happening in the terminal but the contents of the code and such to disk
 - [ ] Show stdout in `w!run`
 - [ ] inline `fmt`
+- [ ] Rerun code if source was edited

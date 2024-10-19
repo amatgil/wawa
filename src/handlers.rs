@@ -19,7 +19,8 @@ Available commands:
 - f / fmt / format: run the formatter
 - p / pad: format and generate a link to the pad
 - d / docs <fn>: show the first paragraph or so of the specified function
-- r / run: format and run the code
+- r / run: format and run the code, showing the source, stdout and final stack
+- s / show: like run, but only display stdout (or the stack if there is no stdout)
 - e / emojify: converts the given code to discord emoji as best as possible
 
 Examples:
@@ -85,8 +86,6 @@ pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
     trace!(user = msg.author.name, ?code, "Running run handler");
     let code = code.trim();
     let code = strip_triple_ticks(code);
-    // TODO: strip single ticks as well
-    //let code = strip_single_ticks(code);
 
     if code.contains("```") {
         info!(code = %code, "Input contained backticks, disallowing");
@@ -105,7 +104,13 @@ pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
     let mut output = String::new();
     let mut attachments = Vec::new();
     match result {
-        Ok(result) => {
+        Ok((stdout, result)) => {
+            if let Some(sout) = stdout {
+                trace!(uiuastdout = sout, "Found stdout in return values");
+                output.push_str(&format!("---Stdout:\n{}---\n", &sout));
+                output.push('\n');
+            }
+            // TODO: this is begging to become a fold
             for item in result {
                 match item {
                     OutputItem::Audio(bytes) => {
@@ -192,9 +197,19 @@ pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
         }
         (f, s) => {
             debug!(flen = f, slen = s, text = ?&finalized_text.chars().take(200).collect::<String>(), "Final message AND shortened verion were too long");
-            send_message(msg, &http, "Message is way too long").await;
+            send_message(
+                msg,
+                &http,
+                "Attempted to send a message that is way too long",
+            )
+            .await;
         }
     }
+}
+
+#[instrument(skip(msg, http))]
+pub async fn handle_show(msg: Message, http: Arc<Http>, code: &str) {
+    send_message(msg, &http, "Show has not yet implemented").await;
 }
 #[instrument(skip(msg, http))]
 pub async fn handle_docs(msg: Message, http: Arc<Http>, code: &str) {
