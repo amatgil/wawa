@@ -43,7 +43,6 @@ quite limited, discord does not offer many much of the ansi spec).
 - [X] Automate command dispatch
 - [X] Add `tracing`
 - [X] Detect raw pad links and sent it wrapped (Check if the string contains `https://uiua.org/pad?src` and not `(https://uiua.org/pad?src`)
-- [ ] Handle single backticks by checking if the last char is a backtick (can't negate an empty stack). same with three
 - [ ] Slash commands (example 5)
 - [ ] `w!docs changelog`
 - [ ] Fix internal links in documentation (like in `under`'s docs), probably by regex subst
@@ -53,8 +52,9 @@ quite limited, discord does not offer many much of the ansi spec).
 - [ ] True parallelism
 - [ ] Keep it running properly (make it a service)
 - [X] Make sure short arrays don't become audio
-- [ ] Preserve spaces, not just newlines, in input
+- [X] Preserve spaces, not just newlines, in input
 - [ ] Log what's happening in the terminal but the contents of the code and such to disk
-- [ ] Show stdout in `w!run`
+- [X] Show stdout in `w!run`
 - [ ] inline `fmt`
 - [ ] Rerun code if source was edited
+- [ ] if the output is a single image it should not show any extra data like <attachment #1: image> or stuff

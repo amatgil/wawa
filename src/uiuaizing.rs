@@ -7,7 +7,7 @@ use base64::Engine;
 use std::fmt::Write;
 use std::str;
 use tracing::trace;
-use uiua::{format::*, SafeSys, SysBackend};
+use uiua::format::*;
 use uiua::{PrimDocFragment, PrimDocLine, Primitive, Uiua};
 
 const MIN_AUTO_IMAGE_DIM: usize = 30;
@@ -30,7 +30,7 @@ impl From<uiua::Value> for OutputItem {
             .build()?;
             encoder.encode_audio_block(channels)?;
             encoder.finish()?;
-            Ok(OutputItem::Audio(sink.into(), None))
+            Ok(OutputItem::Audio(sink, None))
         }
         use uiua::encode::*;
         use uiua::Value;
@@ -51,7 +51,7 @@ impl From<uiua::Value> for OutputItem {
             {
                 if let Ok(bytes) = image_to_bytes(&image, image::ImageOutputFormat::Png) {
                     trace!("Turning image into bytes");
-                    return OutputItem::Image(bytes.into(), None);
+                    return OutputItem::Image(bytes, None);
                 }
             }
         }
@@ -62,7 +62,7 @@ impl From<uiua::Value> for OutputItem {
                     if h >= MIN_AUTO_IMAGE_DIM && w >= MIN_AUTO_IMAGE_DIM && f >= 5 =>
                 {
                     trace!("Turning gif into bytes");
-                    return OutputItem::Gif(gif.into(), None);
+                    return OutputItem::Gif(gif, None);
                 }
                 _ => {}
             }
