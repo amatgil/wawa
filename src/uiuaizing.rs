@@ -4,8 +4,9 @@ use crate::*;
 use base64::engine::general_purpose::URL_SAFE;
 use base64::Engine;
 use std::fmt::Write;
+use std::str;
 use tracing::trace;
-use uiua::format::*;
+use uiua::{format::*, SafeSys};
 use uiua::{PrimDocFragment, PrimDocLine, Primitive, Uiua};
 
 const MIN_AUTO_IMAGE_DIM: usize = 30;
@@ -84,7 +85,8 @@ impl From<uiua::Value> for OutputItem {
     }
 }
 
-pub fn run_uiua(code: &str) -> Result<Vec<OutputItem>, String> {
+/// Returns (prettified stdout, top-most elements of stack)
+pub fn run_uiua(code: &str) -> Result<(Option<String>, Vec<OutputItem>), String> {
     trace!(code, "Starting to execute uiua code");
     if code.is_empty() {
         return Err("Cannot run empty code".into());
@@ -95,19 +97,24 @@ pub fn run_uiua(code: &str) -> Result<Vec<OutputItem>, String> {
 
     match runtime.run_str(exp_code) {
         Ok(_c) => {
+            drop(_c); // Holds ref to backend, cringe
             trace!(code, "Code ran successfully");
-            let mut stack = runtime.take_stack();
+            let stack = runtime.take_stack();
             let stack_len = stack.len();
-            if stack_len > MAX_STACK_VALS_DISPLAYED {
-                stack.truncate(MAX_STACK_VALS_DISPLAYED);
-            }
-            Ok(stack
-                .into_iter()
-                .map(|val| val.into())
-                .chain((stack_len > MAX_STACK_VALS_DISPLAYED).then(|| {
-                    OutputItem::Continuation((stack_len - MAX_STACK_VALS_DISPLAYED) as u32)
-                }))
-                .collect())
+            let stdout_raw = runtime.take_backend::<SafeSys>().unwrap().take_stdout();
+            let stdout = str::from_utf8(&stdout_raw).ok();
+
+            Ok((
+                stdout.map(|s| s.to_string()),
+                stack
+                    .into_iter()
+                    .take(MAX_STACK_VALS_DISPLAYED)
+                    .map(|val| val.into())
+                    .chain((stack_len > MAX_STACK_VALS_DISPLAYED).then(|| {
+                        OutputItem::Continuation((stack_len - MAX_STACK_VALS_DISPLAYED) as u32)
+                    }))
+                    .collect(),
+            ))
         }
         Err(e) => {
             trace!(code, "Code ran Unsuccessfully");
