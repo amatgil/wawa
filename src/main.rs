@@ -32,6 +32,8 @@ async fn handle_message(ctx: Context, msg: Message) {
         .or_else(|| trimmed.strip_prefix(&format!("<@&{}>", *SELF_ID /* Self-role */)));
 
     if let Some(s) = commanded {
+        let span = span!(Level::TRACE, "command_handler");
+        let _guard = span.enter();
         info!(user = msg.author.name, body = ?s, "Processing body");
 
         let s = s.trim();
@@ -43,7 +45,7 @@ async fn handle_message(ctx: Context, msg: Message) {
         match s[0..space_idx].trim() {
             "ping" => handle_ping(msg, ctx.http).await,
             "v" | "ver" | "version" => handle_version(msg, ctx.http).await,
-            "h" | "help" => handle_help(msg, ctx.http).await,
+            "h" | "help" | "" => handle_help(msg, ctx.http).await,
             "f" | "fmt" | "format" => handle_fmt(msg, ctx.http, s[space_idx..].trim()).await,
             "p" | "pad" => handle_pad(msg, ctx.http, s[space_idx..].trim()).await,
             "d" | "doc" | "docs" | "what" => {
@@ -56,7 +58,7 @@ async fn handle_message(ctx: Context, msg: Message) {
         }
     } else {
         let span = span!(Level::TRACE, "rulethree_handler");
-        let _enter = span.enter();
+        let _guard = span.enter();
 
         trace!(user = msg.author.name, "Checking for pad link");
 
@@ -74,7 +76,7 @@ async fn handle_message(ctx: Context, msg: Message) {
         } else {
             trace!(user = msg.author.name, "No pad link detected");
         }
-        std::mem::drop(_enter);
+        std::mem::drop(_guard);
     }
 }
 
