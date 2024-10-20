@@ -252,7 +252,16 @@ pub async fn emojificate(code: &str, msg: Message, ctx: Context) -> String {
                         SpanKind::Comment => format!("`{text}`"),
                         SpanKind::OutputComment => format!("`{text}`"),
                         SpanKind::Strand => format!("`{text}`"),
-                        SpanKind::Ident { .. } => format!("`{text}`"),
+                        SpanKind::Ident { .. } => {
+                            if text == "Lena" {
+                                emoji_from_name("lena", ctxclone, msgclone)
+                                    .await
+                                    .map(|e| format!("<:{}:{}>", e.name, e.id))
+                                    .unwrap_or_else(|_| "<lena emoji should go here>".to_string())
+                            } else {
+                                format!("`{text}`")
+                            }
+                        }
                         SpanKind::Label => format!("`{text}`"),
                         SpanKind::Signature => format!("`{text}`"),
                         SpanKind::Whitespace => format!("{text}"), // no backticks for space
@@ -269,7 +278,7 @@ pub async fn emojificate(code: &str, msg: Message, ctx: Context) -> String {
                         SpanKind::Subscript(_, None) => format!("`{text}`"),
                         SpanKind::Obverse(..) => format!("`{text}`"),
                     };
-                    let _ = write!(out, "{}{}", "\n".repeat(newlines_skipped), fmtd);
+                    let _ = write!(out, "{}{} ", "\n".repeat(newlines_skipped), fmtd);
                     (out, last_cursor)
                 }
             }
