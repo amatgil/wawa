@@ -1,6 +1,12 @@
+use serenity::{
+    all::{Context, Message},
+    futures::{stream, StreamExt},
+};
 use std::fmt::Write;
 use tracing::trace;
 use uiua::{PrimClass, Primitive, SpanKind};
+
+use crate::emoji_from_name;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, Default)]
@@ -216,4 +222,66 @@ fn print_prim(prim: Primitive, sig: Option<usize>) -> String {
     let style = style_of_prim(prim, sig);
 
     with_style(&prim.to_string(), style)
+}
+
+pub async fn emojificate(code: &str, msg: Message, ctx: Context) -> String {
+    let spans: Vec<_> = uiua::lsp::spans(code).0;
+
+    let mut r: String = stream::iter(spans.into_iter())
+        .fold((String::new(), 0), |(mut out, mut last_cursor), s| {
+            let ctxclone = ctx.clone();
+            let msgclone = msg.clone();
+            {
+                async move {
+                    let newlines_skipped = code
+                        .bytes()
+                        .skip(last_cursor as usize)
+                        .take(s.span.start.byte_pos as usize - last_cursor as usize)
+                        .filter(|c| *c == b'\n')
+                        .count();
+                    let text = &code[s.span.start.byte_pos as usize..s.span.end.byte_pos as usize];
+                    last_cursor = s.span.end.byte_pos;
+
+                    let fmtd = match s.value {
+                        SpanKind::Primitive(p, _) => emoji_from_name(p.name(), ctxclone, msgclone)
+                            .await
+                            .map(|e| format!("<:{}:{}>", e.name, e.id))
+                            .unwrap_or_else(|_| format!("`{}`", p.name())),
+                        SpanKind::String => format!("`{text}`"),
+                        SpanKind::Number => format!("`{text}`"),
+                        SpanKind::Comment => format!("`{text}`"),
+                        SpanKind::OutputComment => format!("`{text}`"),
+                        SpanKind::Strand => format!("`{text}`"),
+                        SpanKind::Ident { .. } => format!("`{text}`"),
+                        SpanKind::Label => format!("`{text}`"),
+                        SpanKind::Signature => format!("`{text}`"),
+                        SpanKind::Whitespace => format!("{text}"), // no backticks for space
+                        SpanKind::Placeholder(..) => format!("`{text}`"),
+                        SpanKind::Delimiter => format!("`{text}`"),
+                        SpanKind::FuncDelim(..) => format!("`{text}`"),
+                        SpanKind::ImportSrc(..) => format!("`{text}`"),
+                        SpanKind::Subscript(_, Some(x)) => {
+                            let subs_text: String = (x.to_string().chars())
+                                .map(|c| uiua::SUBSCRIPT_NUMS[(c as u32 as u8 - b'0') as usize])
+                                .collect();
+                            format!("`{subs_text}`")
+                        }
+                        SpanKind::Subscript(_, None) => format!("`{text}`"),
+                        SpanKind::Obverse(..) => format!("`{text}`"),
+                    };
+                    let _ = write!(out, "{}{}", "\n".repeat(newlines_skipped), fmtd);
+                    (out, last_cursor)
+                }
+            }
+        })
+        .await
+        .0;
+
+    if r.is_empty() {
+        trace!(?code, "Result of highlighting was empty");
+        r = "<Empty code>".into();
+    } else {
+        trace!(?code, "Highlighted code successfully");
+    }
+    r
 }

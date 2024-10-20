@@ -495,9 +495,10 @@ pub async fn handle_docs(msg: Message, ctx: Context, code: &str) {
         .await;
     }
 }
-#[instrument(skip(msg, http))]
-pub async fn handle_emojification(msg: Message, http: Arc<Http>, code: &str) {
-    send_message(msg, &http, "Emojification hasn't been completed yet").await;
+#[instrument(skip(msg, ctx))]
+pub async fn handle_emojification(msg: Message, ctx: Context, code: &str) {
+    let emojificated = emojificate(code, msg.clone(), ctx.clone()).await;
+    send_message(msg, &ctx.http, &emojificated).await;
 }
 
 #[instrument(skip(msg, http))]

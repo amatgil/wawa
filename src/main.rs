@@ -54,7 +54,7 @@ async fn handle_message(ctx: Context, msg: Message) {
             "f" | "fmt" | "format" => handle_fmt(msg, ctx.http, s[space_idx..].trim()).await,
             "p" | "pad" => handle_pad(msg, ctx.http, s[space_idx..].trim()).await,
             "d" | "doc" | "docs" | "what" => handle_docs(msg, ctx, s[space_idx..].trim()).await,
-            "e" | "emojify" => handle_emojification(msg, ctx.http, s[space_idx..].trim()).await,
+            "e" | "emojify" => handle_emojification(msg, ctx, s[space_idx..].trim()).await,
             "r" | "run" => handle_run(msg, ctx.http, s[space_idx..].trim()).await,
             "s" | "show" => handle_show(msg, ctx.http, s[space_idx..].trim()).await,
             unrec => handle_unrecognized(msg, ctx.http, unrec).await,

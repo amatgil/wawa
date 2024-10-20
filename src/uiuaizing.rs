@@ -191,6 +191,15 @@ async fn print_docs(line: &PrimDocLine, ctx: Context, msg: Message) -> String {
     }
 }
 
+pub async fn emoji_from_name(
+    name: &str,
+    ctx: Context,
+    msg: Message,
+) -> Result<Emoji, EmojiParseError> {
+    dbg!(name);
+    dbg!(Emoji::convert(ctx.clone(), msg.guild_id, Some(msg.channel_id), &name).await)
+}
+
 async fn print_emoji(c: &Primitive, ctx: Context, msg: Message) -> String {
     if c.is_experimental() {
         c.names()
@@ -199,7 +208,7 @@ async fn print_emoji(c: &Primitive, ctx: Context, msg: Message) -> String {
             .unwrap_or(c.name().to_string())
     } else {
         let name = c.name().split(' ').collect::<String>();
-        let emoji = Emoji::convert(ctx.clone(), msg.guild_id, Some(msg.channel_id), &name).await;
+        let emoji = emoji_from_name(&name, ctx, msg).await;
         match emoji.clone() {
             Ok(e) => trace!(name, "Succesfully got emoji"),
             Err(e) => trace!(name, "Failed to get emoji"),
