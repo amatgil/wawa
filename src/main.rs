@@ -1,7 +1,12 @@
 pub use std::sync::Arc;
 use std::sync::LazyLock;
 
-use serenity::{all::Ready, async_trait, model::channel::Message, prelude::*};
+use serenity::{
+    all::{ArgumentConvert, Emoji, Ready},
+    async_trait,
+    model::channel::Message,
+    prelude::*,
+};
 use tracing::{debug, info, instrument, span, trace, Level};
 use wawa::*;
 
@@ -20,7 +25,7 @@ async fn handle_message(ctx: Context, msg: Message) {
     if msg.author.bot {
         return;
     }
-    let contents = msg.content_safe(ctx.cache).clone();
+    let contents = msg.content_safe(ctx.cache.clone()).clone();
     let trimmed = contents.trim();
     trace!(text = trimmed, "Starting to parse message");
 
@@ -48,9 +53,7 @@ async fn handle_message(ctx: Context, msg: Message) {
             "h" | "help" | "" => handle_help(msg, ctx.http).await,
             "f" | "fmt" | "format" => handle_fmt(msg, ctx.http, s[space_idx..].trim()).await,
             "p" | "pad" => handle_pad(msg, ctx.http, s[space_idx..].trim()).await,
-            "d" | "doc" | "docs" | "what" => {
-                handle_docs(msg, ctx.http, s[space_idx..].trim()).await
-            }
+            "d" | "doc" | "docs" | "what" => handle_docs(msg, ctx, s[space_idx..].trim()).await,
             "e" | "emojify" => handle_emojification(msg, ctx.http, s[space_idx..].trim()).await,
             "r" | "run" => handle_run(msg, ctx.http, s[space_idx..].trim()).await,
             "s" | "show" => handle_show(msg, ctx.http, s[space_idx..].trim()).await,

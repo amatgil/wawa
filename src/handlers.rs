@@ -1,7 +1,10 @@
 use std::sync::Arc;
 
 use crate::{backend::OutputItem, *};
-use serenity::all::{CreateAllowedMentions, CreateAttachment, CreateMessage, Embed, Http, Message};
+use serenity::all::{
+    ArgumentConvert, Context, CreateAllowedMentions, CreateAttachment, CreateMessage, Embed, Emoji,
+    Http, Message,
+};
 use std::fmt::Write;
 use std::sync::LazyLock;
 use tracing::{debug, error, info, instrument, trace};
@@ -471,20 +474,25 @@ pub async fn handle_show(msg: Message, http: Arc<Http>, code: &str) {
         .await;
     }
 }
-#[instrument(skip(msg, http))]
-pub async fn handle_docs(msg: Message, http: Arc<Http>, code: &str) {
+#[instrument(skip(msg, ctx))]
+pub async fn handle_docs(msg: Message, ctx: Context, code: &str) {
     trace!(user = msg.author.name, ?code, "Running docs handler");
     if code.len() > *MAX_FN_LEN {
         debug!("Code was too long to show documentation");
         send_message(
             msg,
-            &http,
+            &ctx.http,
             &format!("Functions don't have more than {} chars", *MAX_FN_LEN),
         )
         .await
     } else {
         trace!(?code, "Sending back documentation");
-        send_message(msg, &http, &get_docs(code.trim())).await
+        send_message(
+            msg.clone(),
+            &ctx.http.clone(),
+            &get_docs(code.trim(), ctx, msg).await,
+        )
+        .await;
     }
 }
 #[instrument(skip(msg, http))]

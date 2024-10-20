@@ -4,6 +4,8 @@ use crate::backend::{NativisedWebBackend, OutputItem};
 use crate::*;
 use base64::engine::general_purpose::URL_SAFE;
 use base64::Engine;
+use serenity::all::{ArgumentConvert, Context, Emoji, EmojiParseError, Message};
+use serenity::futures::future::join_all;
 use std::fmt::Write;
 use std::str;
 use tracing::{error, trace};
@@ -114,59 +116,62 @@ pub fn run_uiua(code: &str) -> Result<(Vec<OutputItem>, Vec<OutputItem>), String
     }
 }
 
-pub fn get_docs(f: &str) -> String {
+pub async fn get_docs(f: &str, ctx: Context, msg: Message) -> String {
     match Primitive::from_format_name(f)
         .or_else(|| Primitive::from_glyph(f.chars().next().unwrap_or_default()))
         .or_else(|| Primitive::from_name(f))
     {
         Some(docs) => {
-            let short = docs
-                .doc()
-                .short
-                .iter()
-                .map(print_doc_frag)
-                .map(|s| format!("## {s}"))
-                .collect::<Vec<String>>()
-                .join("\n");
+            let short = join_all(docs.doc().short.iter().map(|frag| async {
+                format!(
+                    "## {}",
+                    print_doc_frag(frag, ctx.clone(), msg.clone()).await
+                )
+            }))
+            .await
+            .join("\n");
 
-            let long = docs
-                .doc()
-                .lines
-                .iter()
-                .take(5)
-                .map(print_docs)
-                .collect::<Vec<String>>()
-                .join("\n");
+            let long = join_all(
+                docs.doc()
+                    .lines
+                    .iter()
+                    .take(5)
+                    .map(|docs| async { print_docs(docs, ctx.clone(), msg.clone()).await }),
+            )
+            .await
+            .join("\n");
             format!("\n{short}\n\n\n{long}\n\n([More information](https://uiua.org/docs/{f}))")
         }
         None => format!("No docs found for '{f}', did you spell it right?"),
     }
 }
 
-fn print_doc_frag(frag: &PrimDocFragment) -> String {
+async fn print_doc_frag(frag: &PrimDocFragment, ctx: Context, msg: Message) -> String {
     match frag {
         PrimDocFragment::Text(t) => t.clone(),
         PrimDocFragment::Code(t) => format!("`{t}`"),
         PrimDocFragment::Emphasis(t) => format!("_{t}_"),
         PrimDocFragment::Strong(t) => format!("**{t}**"),
         PrimDocFragment::Primitive { prim, named } => {
-            if *named {
-                format!("{} `{}`", print_emoji(prim), prim.name())
-            } else {
-                print_emoji(prim)
-            }
+            print_emoji(prim, ctx, msg).await
+            //if *named {
+            //    format!("{} `{}`", print_emoji(prim, ctx, msg), prim.name())
+            //} else {
+            //    print_emoji(prim)
+            //}
         }
         PrimDocFragment::Link { text, url } => format!("[{text}]({url})"),
     }
 }
 
-fn print_docs(line: &PrimDocLine) -> String {
+async fn print_docs(line: &PrimDocLine, ctx: Context, msg: Message) -> String {
     match line {
-        PrimDocLine::Text(vs) => vs
-            .iter()
-            .map(print_doc_frag)
-            .collect::<Vec<String>>()
-            .join(" "),
+        PrimDocLine::Text(vs) => join_all(
+            vs.iter()
+                .map(|frag| async { print_doc_frag(frag, ctx.clone(), msg.clone()).await }),
+        )
+        .await
+        .join(" "),
         PrimDocLine::Example(e) => {
             let out = match e.output().as_ref().map(|vs| vs.join(";")) {
                 Ok(l) => l,
@@ -186,15 +191,28 @@ fn print_docs(line: &PrimDocLine) -> String {
     }
 }
 
-fn print_emoji(c: &Primitive) -> String {
+async fn print_emoji(c: &Primitive, ctx: Context, msg: Message) -> String {
     if c.is_experimental() {
         c.names()
             .glyph
             .map(|g| g.to_string())
             .unwrap_or(c.name().to_string())
     } else {
-        let spaceless_name = c.name().split(' ').collect::<String>();
-        format!(":{}:", spaceless_name)
+        let name = c.name().split(' ').collect::<String>();
+        let emoji = Emoji::convert(ctx.clone(), msg.guild_id, Some(msg.channel_id), &name).await;
+        match emoji.clone() {
+            Ok(e) => trace!(name, "Succesfully got emoji"),
+            Err(e) => trace!(name, "Failed to get emoji"),
+        }
+        match emoji {
+            Ok(e) => {
+                format!("<:{}:{}>", name, e.id)
+            }
+            Err(e) => {
+                trace!(error = ?e, "Error getting emoji");
+                name // it's a function with no glyph, like `&p`
+            }
+        }
     }
 }
 
