@@ -2,8 +2,7 @@ use std::sync::Arc;
 
 use crate::{backend::OutputItem, *};
 use serenity::all::{
-    ArgumentConvert, Context, CreateAllowedMentions, CreateAttachment, CreateMessage, Embed, Emoji,
-    Http, Message,
+    Context, CreateAllowedMentions, CreateAttachment, CreateMessage, Embed, Emoji, Http, Message,
 };
 use std::fmt::Write;
 use std::sync::LazyLock;

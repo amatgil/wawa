@@ -14,7 +14,7 @@ use uiua::{PrimDocFragment, PrimDocLine, Primitive, Uiua};
 
 const MIN_AUTO_IMAGE_DIM: usize = 30;
 const MAX_STACK_VALS_DISPLAYED: usize = 10;
-const DEFAULT_EXECUTION_LIMIT: Duration = Duration::from_secs(2);
+const DEFAULT_EXECUTION_LIMIT: Duration = Duration::from_secs(5);
 
 impl From<uiua::Value> for OutputItem {
     fn from(value: uiua::Value) -> Self {
@@ -209,12 +209,9 @@ async fn print_emoji(c: &Primitive, ctx: Context, msg: Message) -> String {
     } else {
         let name = c.name().split(' ').collect::<String>();
         let emoji = emoji_from_name(&name, ctx, msg).await;
-        match emoji.clone() {
-            Ok(e) => trace!(name, "Succesfully got emoji"),
-            Err(e) => trace!(name, "Failed to get emoji"),
-        }
         match emoji {
             Ok(e) => {
+                trace!(name, "Succesfully got emoji")
                 format!("<:{}:{}>", name, e.id)
             }
             Err(e) => {
