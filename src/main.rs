@@ -57,6 +57,7 @@ async fn handle_message(ctx: Context, msg: Message) {
             "e" | "emojify" => handle_emojification(msg, ctx, s[space_idx..].trim()).await,
             "r" | "run" => handle_run(msg, ctx.http, s[space_idx..].trim()).await,
             "s" | "show" => handle_show(msg, ctx.http, s[space_idx..].trim()).await,
+            "shutdown" => send_message(msg, &ctx.http, "Ok, shutting down now").await, // This does not shutdown
             unrec => handle_unrecognized(msg, ctx.http, unrec).await,
         }
     } else {

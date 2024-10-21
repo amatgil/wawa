@@ -211,7 +211,7 @@ async fn print_emoji(c: &Primitive, ctx: Context, msg: Message) -> String {
         let emoji = emoji_from_name(&name, ctx, msg).await;
         match emoji {
             Ok(e) => {
-                trace!(name, "Succesfully got emoji")
+                trace!(name, "Succesfully got emoji");
                 format!("<:{}:{}>", name, e.id)
             }
             Err(e) => {
