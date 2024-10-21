@@ -16,22 +16,24 @@ Your friendly neighbourhood uiua bot!
 Run with either `w!` or `wawa!`
 
 Available commands:
-- ping: pong
-- h / help: display this text!
-- v / ver / version: display uiua version used by the rest of commands
-- f / fmt / format: run the formatter
-- p / pad: format and generate a link to the pad
-- d / docs <fn>: show the first paragraph or so of the specified function
-- r / run: format and run the code, showing the source, stdout and final stack
-- s / show: like run, but only display stdout (or the stack if there is no stdout)
-- e / emojify: converts the given code to discord emoji as best as possible
+- [`ping`]: pong
+- [`h` `help`]: display this text!
+- [`v` `ver` `version`]: display uiua version used by the rest of commands
+- [`f` `fmt` `format`]`: run the formatter
+- [`p` `pad`]: format and generate a link to the pad
+- [`d` `docs`]: show the first paragraph or so of the specified function
+- [`r` `run`]: format and run the code, showing the source, stdout and final stack
+- [`s` `show`]: like run, but only display stdout (or the stack if there is no stdout)
+- [`e` `emojify`]: converts the given code to discord emoji as best as possible
 
 Examples:
-- w!fmt below+ 1 2 3
-- w! fmt below+ 1 2 3
-- w!pad below+ 1 2 3
-- w!run below+ 1 2 3
-- w!docs tup
+
+- `w!fmt below+ 1 2 3`
+- `w! fmt below+ 1 2 3`
+- `w!pad below+ 1 2 3`
+- `w!run below+ 1 2 3`
+- `w!docs tup`
+
 
 Ping <@328851809357791232> for any questions or if you want the version to get bumped
 "#;
