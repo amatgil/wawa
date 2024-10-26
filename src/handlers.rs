@@ -19,7 +19,7 @@ Available commands:
 - [`ping`]: pong
 - [`h` `help`]: display this text!
 - [`v` `ver` `version`]: display uiua version used by the rest of commands
-- [`f` `fmt` `format`]`: run the formatter
+- [`f` `fmt` `format`]: run the formatter
 - [`p` `pad`]: format and generate a link to the pad
 - [`d` `docs`]: show the first paragraph or so of the specified function
 - [`r` `run`]: format and run the code, showing the source, stdout and final stack
