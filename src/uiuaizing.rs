@@ -70,7 +70,7 @@ impl From<uiua::Value> for OutputItem {
             }
         }
 
-        OutputItem::String(value.to_string())
+        OutputItem::String(value.show())
     }
 }
 
