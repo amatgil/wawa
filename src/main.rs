@@ -8,6 +8,8 @@ use serenity::{
     prelude::*,
 };
 use tracing::{debug, info, instrument, span, trace, Level};
+use tracing_appender::rolling::{RollingFileAppender, Rotation};
+use tracing_subscriber::fmt::{writer::MakeWriterExt, SubscriberBuilder};
 use wawa::*;
 
 static SELF_HANDLE: LazyLock<String> =
@@ -47,6 +49,7 @@ async fn handle_message(ctx: Context, msg: Message) {
             .position(|c| c.is_ascii_whitespace())
             .unwrap_or(s.len());
         debug!(cmd = s[0..space_idx].trim(), "Parsing command");
+
         match s[0..space_idx].trim() {
             "ping" => handle_ping(msg, ctx.http).await,
             "v" | "ver" | "version" => handle_version(msg, ctx.http).await,
@@ -97,10 +100,19 @@ impl EventHandler for Handler {
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
+    let logs_dir = dotenv::var("LOGS_DIRECTORY").expect("'LOGS_DIRECTORY not found in .env file");
+    let file_appender = RollingFileAppender::new(Rotation::DAILY, logs_dir, "wawa_log");
+    let subscriber = SubscriberBuilder::default()
+        .with_writer(std::io::stdout.and(file_appender))
+        .finish();
+
+    tracing::subscriber::set_global_default(subscriber)
+        .expect("Failed to set global default subscriber");
 
     let token = dotenv::var("DISCORD_TOKEN").expect("DISCORD_TOKEN not found in .env");
     let intents = GatewayIntents::MESSAGE_CONTENT | GatewayIntents::GUILD_MESSAGES;
+
+    info!("Starting up wawa");
 
     // Create a new instance of the Client, logging in as a bot.
     let mut client = Client::builder(&token, intents)
