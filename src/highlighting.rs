@@ -91,7 +91,7 @@ fn with_style(s: &str, ansi: AnsiState) -> String {
 
 /// Returns code surrounded by ANSI backticks to fake highlighting
 pub fn highlight_code(code: &str) -> String {
-    let spans: Vec<_> = uiua::lsp::spans(code).0;
+    let spans: Vec<_> = uiua::lsp::Spans::from_input(code).spans;
     let mut last_cursor: u32 = 0;
     let mut r: String = spans.into_iter().fold(String::new(), |mut out, s| {
         let newlines_skipped = code
@@ -154,12 +154,13 @@ pub fn highlight_code(code: &str) -> String {
                     .map(|c| uiua::SUBSCRIPT_NUMS[(c as u32 as u8 - b'0') as usize])
                     .collect();
                 let style = prim
-                    .map(|p| style_of_prim(p, p.signature().map(|s| s.args)))
+                    .map(|p| style_of_prim(p, p.sig().map(|s| s.args)))
                     .unwrap_or_default();
                 with_style(&subs_text, style)
             }
             SpanKind::Subscript(_, None) => with_style(text, AnsiState::default()),
             SpanKind::Obverse(..) => with_style(text, AnsiState::default()),
+            SpanKind::MacroDelim(..) => with_style(text, AnsiState::default()),
         };
         let _ = write!(out, "{}{}", "\n".repeat(newlines_skipped), fmtd);
         out
@@ -225,7 +226,7 @@ fn print_prim(prim: Primitive, sig: Option<usize>) -> String {
 }
 
 pub async fn emojificate(code: &str, msg: Message, ctx: Context) -> String {
-    let spans: Vec<_> = uiua::lsp::spans(code).0;
+    let spans: Vec<_> = uiua::lsp::Spans::from_input(code).spans;
 
     let mut r: String = stream::iter(spans.into_iter())
         .fold((String::new(), 0), |(mut out, mut last_cursor), s| {
@@ -277,6 +278,7 @@ pub async fn emojificate(code: &str, msg: Message, ctx: Context) -> String {
                         }
                         SpanKind::Subscript(_, None) => format!("`{text}`"),
                         SpanKind::Obverse(..) => format!("`{text}`"),
+                        SpanKind::MacroDelim(..) => format!("`{text}`"),
                     };
                     let _ = write!(out, "{}{} ", "\n".repeat(newlines_skipped), fmtd);
                     (out, last_cursor)

@@ -7,9 +7,12 @@ use serenity::{
     model::channel::Message,
     prelude::*,
 };
-use tracing::{debug, info, instrument, span, trace, Level};
+use tracing::{debug, error, info, instrument, span, trace, Level};
 use tracing_appender::rolling::{RollingFileAppender, Rotation};
-use tracing_subscriber::fmt::{writer::MakeWriterExt, SubscriberBuilder};
+use tracing_subscriber::{
+    fmt::{writer::MakeWriterExt, SubscriberBuilder},
+    EnvFilter,
+};
 use wawa::*;
 
 static SELF_HANDLE: LazyLock<String> =
@@ -103,6 +106,7 @@ async fn main() {
     let logs_dir = dotenv::var("LOGS_DIRECTORY").expect("'LOGS_DIRECTORY not found in .env file");
     let file_appender = RollingFileAppender::new(Rotation::DAILY, logs_dir, "wawa_log");
     let subscriber = SubscriberBuilder::default()
+        .with_env_filter(EnvFilter::from_default_env())
         .with_writer(std::io::stdout.and(file_appender))
         .finish();
 
@@ -120,8 +124,10 @@ async fn main() {
         .await
         .expect("Err creating client");
 
+    trace!("Client started");
+
     // Start listening for events by starting a single shard
     if let Err(why) = client.start().await {
-        println!("Client error: {why:?}");
+        error!("Client error: {why:?}");
     }
 }
