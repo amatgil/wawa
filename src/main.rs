@@ -2,12 +2,11 @@ pub use std::sync::Arc;
 use std::sync::LazyLock;
 
 use serenity::{
-    all::{ArgumentConvert, Emoji, EmojiId, GuildId, Reaction, ReactionType, Ready, User},
+    all::{Reaction, ReactionType, Ready},
     async_trait,
     model::channel::Message,
     prelude::*,
 };
-use std::collections::HashMap;
 use tracing::{debug, error, info, instrument, span, trace, Level};
 use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_subscriber::{

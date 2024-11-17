@@ -34,6 +34,7 @@ Examples:
 - `w!run below+ 1 2 3`
 - `w!docs tup`
 
+You can delete any wawa message (that you triggered!) by reacting with :x:.
 
 Ping <@328851809357791232> for any questions or if you want the version to get bumped
 "#;
