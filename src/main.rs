@@ -2,7 +2,7 @@ pub use std::sync::Arc;
 use std::sync::LazyLock;
 
 use serenity::{
-    all::{ArgumentConvert, Emoji, EmojiId, GuildId, Reaction, Ready},
+    all::{ArgumentConvert, Emoji, EmojiId, GuildId, Reaction, ReactionType, Ready, User},
     async_trait,
     model::channel::Message,
     prelude::*,
@@ -103,20 +103,54 @@ impl EventHandler for Handler {
         info!(name = ready.user.name, "Bot is connected");
     }
     async fn reaction_add(&self, ctx: Context, reaction: Reaction) {
-        dbg!(&ctx, &reaction);
-        let Ok(reacted_message) = reaction.message(ctx.http).await else {
-            trace!("Received emoji but couldn't obtain");
-            return;
+        let reacted_message = match reaction.message(&ctx.http).await {
+            Ok(rm) => rm,
+            Err(e) => {
+                trace!(?e, "Received emoji but couldn't obtain its source message");
+                return;
+            }
         };
-        dbg!(&reacted_message);
-        let Some(command_message) = reacted_message.referenced_message else {
-            trace!("Wawa message seems to be in reply to an unexistant message");
-            return;
+
+        let command_message = match reacted_message.clone().referenced_message {
+            Some(cm) => cm,
+            None => {
+                trace!("Wawa message seems to be in reply to an unreachable message"); // Probs deleted
+                return;
+            }
         };
+
         if Some(command_message.author.id) == reaction.user_id {
+            // Authorized user sent it!
             trace!(
                 user = command_message.author.name,
                 "Authorized emoji detected on wawa message"
+            );
+
+            if reaction.emoji != ReactionType::Unicode("❌".to_string()) {
+                trace!("Emoji is NOT cross, skipping");
+                return;
+            }
+
+            trace!("Emoji is cross, proceeding to deletion");
+            match reacted_message.delete(ctx.http).await {
+                Ok(()) => trace!("Message deleted"),
+                Err(error) => trace!(?error, "Error deleting message"),
+            }
+        } else {
+            // Unauthorized, this is all for tracing
+            let emoji_sender: Option<String> = if let Some(emoji_sender_id) = reaction.user_id {
+                ctx.http
+                    .get_user(emoji_sender_id)
+                    .await
+                    .map(|r| r.name)
+                    .ok()
+            } else {
+                None
+            };
+            trace!(
+                command_sender = command_message.author.name,
+                emoji_sender,
+                "UN-authoritzed emoji detected on wawa message, ignoring"
             );
         }
     }
