@@ -2,11 +2,12 @@ pub use std::sync::Arc;
 use std::sync::LazyLock;
 
 use serenity::{
-    all::{ArgumentConvert, Emoji, Ready},
+    all::{ArgumentConvert, Emoji, EmojiId, GuildId, Reaction, Ready},
     async_trait,
     model::channel::Message,
     prelude::*,
 };
+use std::collections::HashMap;
 use tracing::{debug, error, info, instrument, span, trace, Level};
 use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_subscriber::{
@@ -36,6 +37,8 @@ async fn handle_message(ctx: Context, msg: Message) {
 
     let commanded = trimmed
         .strip_prefix("w!")
+        .or_else(|| trimmed.strip_prefix("W!"))
+        .or_else(|| trimmed.strip_prefix("Wawa!"))
         .or_else(|| trimmed.strip_prefix("wawa!"))
         .or_else(|| trimmed.strip_prefix(&format!("@{}", *SELF_HANDLE)))
         .or_else(|| trimmed.strip_prefix(&format!("<@{}>", *SELF_ID)))
@@ -53,7 +56,7 @@ async fn handle_message(ctx: Context, msg: Message) {
             .unwrap_or(s.len());
         debug!(cmd = s[0..space_idx].trim(), "Parsing command");
 
-        match s[0..space_idx].trim() {
+        match s[0..space_idx].trim().to_lowercase().as_str() {
             "ping" => handle_ping(msg, ctx.http).await,
             "v" | "ver" | "version" => handle_version(msg, ctx.http).await,
             "h" | "help" | "" => handle_help(msg, ctx.http).await,
@@ -99,6 +102,24 @@ impl EventHandler for Handler {
     async fn ready(&self, _: Context, ready: Ready) {
         info!(name = ready.user.name, "Bot is connected");
     }
+    async fn reaction_add(&self, ctx: Context, reaction: Reaction) {
+        dbg!(&ctx, &reaction);
+        let Ok(reacted_message) = reaction.message(ctx.http).await else {
+            trace!("Received emoji but couldn't obtain");
+            return;
+        };
+        dbg!(&reacted_message);
+        let Some(command_message) = reacted_message.referenced_message else {
+            trace!("Wawa message seems to be in reply to an unexistant message");
+            return;
+        };
+        if Some(command_message.author.id) == reaction.user_id {
+            trace!(
+                user = command_message.author.name,
+                "Authorized emoji detected on wawa message"
+            );
+        }
+    }
 }
 
 #[tokio::main]
@@ -114,7 +135,9 @@ async fn main() {
         .expect("Failed to set global default subscriber");
 
     let token = dotenv::var("DISCORD_TOKEN").expect("DISCORD_TOKEN not found in .env");
-    let intents = GatewayIntents::MESSAGE_CONTENT | GatewayIntents::GUILD_MESSAGES;
+    let intents = GatewayIntents::MESSAGE_CONTENT
+        | GatewayIntents::GUILD_MESSAGES
+        | GatewayIntents::GUILD_MESSAGE_REACTIONS;
 
     info!("Starting up wawa");
 

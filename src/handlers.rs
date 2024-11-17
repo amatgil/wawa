@@ -251,7 +251,7 @@ pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
     };
 
     // Make sure we're not over the char limit
-    let finalized_text = format!("Source:\n{source}\nReturns:\n{result}");
+    let finalized_text = format!("{source}\n{result}");
     let shortened_text =
         format!("<Resulting message is too large, skipping the source>\nReturns:\n{result}");
 
