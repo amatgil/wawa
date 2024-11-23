@@ -150,11 +150,18 @@ pub fn highlight_code(code: &str) -> String {
             SpanKind::FuncDelim(..) => with_style(text, AnsiState::default()),
             SpanKind::ImportSrc(..) => with_style(text, AnsiState::default()),
             SpanKind::Subscript(prim, Some(x)) => {
+                // TODO: this does not highlight the attached primitive correctly
                 let subs_text: String = (x.to_string().chars())
-                    .map(|c| uiua::SUBSCRIPT_NUMS[(c as u32 as u8 - b'0') as usize])
+                    .map(|c| {
+                        if c == '-' {
+                            '₋'
+                        } else {
+                            uiua::SUBSCRIPT_DIGITS[(c as u32 as u8 - b'0') as usize]
+                        }
+                    })
                     .collect();
                 let style = prim
-                    .map(|p| style_of_prim(p, p.sig().map(|s| s.args)))
+                    .map(|p| style_of_prim(p, p.sig().map(|s| s.args as i32)))
                     .unwrap_or_default();
                 with_style(&subs_text, style)
             }
@@ -176,7 +183,7 @@ pub fn highlight_code(code: &str) -> String {
     r
 }
 
-fn style_of_prim(prim: Primitive, sig: Option<usize>) -> AnsiState {
+fn style_of_prim(prim: Primitive, sig: Option<i32>) -> AnsiState {
     let noadic = AnsiState::just_color(AnsiColor::Red);
     let monadic = AnsiState {
         color: AnsiColor::Green,
@@ -207,7 +214,7 @@ fn style_of_prim(prim: Primitive, sig: Option<usize>) -> AnsiState {
             if let Some(margs) = prim.modifier_args() {
                 Some(if margs == 1 { monadic_mod } else { dyadic_mod })
             } else {
-                match sig.or(prim.args()) {
+                match sig.or(prim.args().map(|a| a as i32)) {
                     Some(0) => Some(noadic),
                     Some(1) => Some(monadic),
                     Some(2) => Some(dyadic),
@@ -219,7 +226,7 @@ fn style_of_prim(prim: Primitive, sig: Option<usize>) -> AnsiState {
     .unwrap_or(AnsiState::default())
 }
 
-fn print_prim(prim: Primitive, sig: Option<usize>) -> String {
+fn print_prim(prim: Primitive, sig: Option<i32>) -> String {
     let style = style_of_prim(prim, sig);
 
     with_style(&prim.to_string(), style)
@@ -272,7 +279,7 @@ pub async fn emojificate(code: &str, msg: Message, ctx: Context) -> String {
                         SpanKind::ImportSrc(..) => format!("`{text}`"),
                         SpanKind::Subscript(_, Some(x)) => {
                             let subs_text: String = (x.to_string().chars())
-                                .map(|c| uiua::SUBSCRIPT_NUMS[(c as u32 as u8 - b'0') as usize])
+                                .map(|c| uiua::SUBSCRIPT_DIGITS[(c as u32 as u8 - b'0') as usize])
                                 .collect();
                             format!("`{subs_text}`")
                         }
