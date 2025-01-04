@@ -10,6 +10,8 @@ Use either of the prefixes or a direct mention followed by the command. For exam
 - `wawa!docs <fn>`: print the documentation for a function
 - `wawa!pad <code>`: format the code and provide a pad link
 
+All uiua codeblocks use custom syntax highlighting using the `ansi` environment (which is
+quite limited, discord does not offer many much of the ansi spec).
 
 # Full list of commands
 - ping: pong
@@ -21,12 +23,6 @@ Use either of the prefixes or a direct mention followed by the command. For exam
 - r / run: format and run the code
 - e / emojify: converts the given code to discord emoji as best as possible
 
-
-# Examples
-TODO: This was populated but fell out of date
-
-All uiua codeblocks use custom syntax highlighting using the `ansi` environment (which is
-quite limited, discord does not offer many much of the ansi spec).
 
 # Goals
 - [X] Docs command: `w! docs tuple` returns the documentation for `tuple`
@@ -47,14 +43,19 @@ quite limited, discord does not offer many much of the ansi spec).
 - [ ] `w!docs changelog`
 - [ ] Fix internal links in documentation (like in `under`'s docs), probably by regex subst
 - [ ] Add space and time constraints for `w!run`
-- [ ] Unify extended message sending function
+- [X] Unify extended message sending function
 - [ ] Add char limit to advanced (embed) msg sender fn
 - [ ] True parallelism
 - [ ] Keep it running properly (make it a service)
 - [X] Make sure short arrays don't become audio
 - [X] Preserve spaces, not just newlines, in input
-- [ ] Log what's happening in the terminal but the contents of the code and such to disk
+- [X] Log what's happening in the terminal but the contents of the code and such to disk
 - [X] Show stdout in `w!run`
-- [ ] inline `fmt`
+- [-] inline `fmt`
 - [ ] Rerun code if source was edited
 - [ ] if the output is a single image it should not show any extra data like <attachment #1: image> or stuff
+
+
+# TODO
+- After "w!s Lena; kork0.5", reacting to the wawa response with :uiua: gives back the result of "w!pad Lena; kork0.5"
+- Make all text sent by wawa be in an ansi-formatted block (even if it doesn't have ansi codes)
