@@ -4,6 +4,7 @@ use crate::backend::{NativisedWebBackend, OutputItem};
 use crate::*;
 use base64::engine::general_purpose::URL_SAFE;
 use base64::Engine;
+use image::ImageFormat;
 use serenity::all::{ArgumentConvert, Context, Emoji, EmojiParseError, Message};
 use serenity::futures::future::join_all;
 use std::fmt::Write;
@@ -51,7 +52,7 @@ impl From<uiua::Value> for OutputItem {
             if image.width() >= MIN_AUTO_IMAGE_DIM as u32
                 && image.height() >= MIN_AUTO_IMAGE_DIM as u32
             {
-                if let Ok(bytes) = image_to_bytes(&image, image::ImageOutputFormat::Png) {
+                if let Ok(bytes) = image_to_bytes(&image, image::ImageFormat::Png) {
                     trace!("Turning image into bytes");
                     return OutputItem::Image(bytes, None);
                 }

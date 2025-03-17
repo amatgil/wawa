@@ -8,7 +8,7 @@ description = "A discord bot, for uiua!"
 [dependencies]
 base64 = "0.22.1"
 dotenv = "0.15.0"
-image = { version = "0.24.9", default-features = false, features = ["png"] }
+image = { version = "0.25.5", default-features = false, features = ["png"] }
 lazy_static = "1.5.0"
 regex = "1.11.0"
 serenity = "0.12.2"
