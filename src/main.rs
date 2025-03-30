@@ -34,14 +34,30 @@ async fn handle_message(ctx: Context, msg: Message) {
     let trimmed = contents.trim();
     trace!(text = trimmed, "Starting to parse message");
 
-    let commanded = trimmed
-        .strip_prefix("w!")
-        .or_else(|| trimmed.strip_prefix("W!"))
-        .or_else(|| trimmed.strip_prefix("Wawa!"))
-        .or_else(|| trimmed.strip_prefix("wawa!"))
-        .or_else(|| trimmed.strip_prefix(&format!("@{}", *SELF_HANDLE)))
-        .or_else(|| trimmed.strip_prefix(&format!("<@{}>", *SELF_ID)))
-        .or_else(|| trimmed.strip_prefix(&format!("<@&{}>", *SELF_ID /* Self-role */)));
+    let prefixes = [
+        "w!",
+        "W!",
+        "Wawa!",
+        "wawa!",
+        &format!("@{}", *SELF_HANDLE),
+        &format!("<@{}>", *SELF_ID),
+        &format!("<@&{}>", *SELF_ID), /* Self-role */
+    ];
+
+    let lines = trimmed
+        .lines()
+        .skip_while(|line| {
+            !prefixes
+                .iter()
+                .any(|prefix| line.trim_start().starts_with(prefix))
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    let lines = lines.trim_start();
+
+    let commanded = prefixes.iter().fold(None, |acc, prefix| {
+        acc.or_else(|| lines.strip_prefix(prefix))
+    });
 
     if let Some(s) = commanded {
         let span = span!(Level::TRACE, "command_handler");
