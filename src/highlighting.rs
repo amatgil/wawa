@@ -168,6 +168,7 @@ pub fn highlight_code(code: &str) -> String {
             SpanKind::Subscript(_, None) => with_style(text, AnsiState::default()),
             SpanKind::Obverse(..) => with_style(text, AnsiState::default()),
             SpanKind::MacroDelim(..) => with_style(text, AnsiState::default()),
+            SpanKind::LexOrder => with_style(text, AnsiState::default()),
         };
         let _ = write!(out, "{}{}", "\n".repeat(newlines_skipped), fmtd);
         out
@@ -286,6 +287,7 @@ pub async fn emojificate(code: &str, msg: Message, ctx: Context) -> String {
                         SpanKind::Subscript(_, None) => format!("`{text}`"),
                         SpanKind::Obverse(..) => format!("`{text}`"),
                         SpanKind::MacroDelim(..) => format!("`{text}`"),
+                        SpanKind::LexOrder => format!("`{text}`"),
                     };
                     let _ = write!(out, "{}{} ", "\n".repeat(newlines_skipped), fmtd);
                     (out, last_cursor)
