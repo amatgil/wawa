@@ -90,7 +90,7 @@ pub async fn run_uiua(
     code: &str,
     attachments: &[Attachment],
 ) -> Result<(Vec<OutputItem>, Vec<OutputItem>), String> {
-    const MAX_ATTACHMENT_IMAGE_PIXEL_COUNT: u32 = 268435456;
+    const MAX_ATTACHMENT_IMAGE_PIXEL_COUNT: u32 = 2000 * 2000;
 
     trace!(code, "Starting to execute uiua code");
     if code.is_empty() {
