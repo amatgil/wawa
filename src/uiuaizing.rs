@@ -103,7 +103,7 @@ pub async fn run_uiua(
         match (attachment.width, attachment.height) {
             (Some(w), Some(h)) if w * h >= MAX_ATTACHMENT_IMAGE_PIXEL_COUNT => {
                 return Err(format!(
-                    "Attachment {i} has (width, height) := ({w}, {h}), which is too many pixels"
+                    "Attachment {i} has (width, height) := ({w}, {h}), which is too many pixels (maximum is {MAX_ATTACHMENT_IMAGE_PIXEL_COUNT})"
                 ))
             }
             _ => {}
