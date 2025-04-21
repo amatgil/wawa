@@ -5,21 +5,24 @@ use std::{
     cell::RefCell,
     collections::HashMap,
     io::Cursor,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{Mutex, OnceLock},
     time::Duration,
 };
 
-use uiua::{now, Report, SysBackend, EXAMPLE_TXT, EXAMPLE_UA};
+use uiua::{now, Handle, Report, SysBackend, EXAMPLE_TXT, EXAMPLE_UA};
 
 static START_TIME: OnceLock<f64> = OnceLock::new();
 
+#[derive(Debug)]
 pub struct NativisedWebBackend {
     pub stdout: Mutex<Vec<OutputItem>>,
     pub stderr: Mutex<String>,
     pub trace: Mutex<String>,
+    pub files: Mutex<HashMap<PathBuf, Vec<u8>>>,
 }
 
+/*
 thread_local! {
     static FILES: RefCell<HashMap<PathBuf, Vec<u8>>> = RefCell::new(
         [
@@ -29,7 +32,7 @@ thread_local! {
         .map(|(path, content)| (PathBuf::from(path), content.as_bytes().to_vec()))
         .into(),
     );
-}
+}*/
 
 impl NativisedWebBackend {
     pub fn current_stdout(&self) -> Vec<OutputItem> {
@@ -37,19 +40,6 @@ impl NativisedWebBackend {
         t.clone()
     }
 }
-/*
-fn weewuh() {
-    let i = (now() % 1.0 * 100.0) as u32;
-    let src = match i {
-        0 => "/assets/ooh-ee-ooh-ah.mp3",
-        1..=4 => "/assets/wee-wah.mp3",
-        _ => "/assets/wee-wuh.mp3",
-    };
-    if let Ok(audio) = HtmlAudioElement::new_with_src(src) {
-        _ = audio.play();
-    }
-}
-*/
 
 impl Default for NativisedWebBackend {
     fn default() -> Self {
@@ -57,6 +47,11 @@ impl Default for NativisedWebBackend {
             stdout: Vec::new().into(),
             stderr: String::new().into(),
             trace: String::new().into(),
+            files: HashMap::from([
+                ("example.ua".into(), EXAMPLE_UA.bytes().collect()),
+                ("example.txt".into(), EXAMPLE_TXT.bytes().collect()),
+            ])
+            .into(),
         }
     }
 }
@@ -89,11 +84,6 @@ impl SysBackend for NativisedWebBackend {
         self
     }
     fn print_str_stdout(&self, s: &str) -> Result<(), String> {
-        /* TODO: weewuh
-        if s.contains('\u{07}') {
-            weewuh();
-        }
-        */
         let mut stdout = self.stdout.lock().unwrap();
         let mut lines = s.lines();
         let Some(first) = lines.next() else {
@@ -143,6 +133,35 @@ impl SysBackend for NativisedWebBackend {
     }
     fn allow_thread_spawning(&self) -> bool {
         true
+    }
+    fn file_read_all(&self, path: &Path) -> Result<Vec<u8>, String> {
+        let files = self
+            .files
+            .lock()
+            .map_err(|_| "catastrophic error (reading file)".to_string())?;
+        files
+            .get(&path.to_owned())
+            .ok_or("File did not exist, did you send the attachment?".to_string())
+            .cloned()
+    }
+    fn file_write_all(&self, path: &Path, contents: &[u8]) -> Result<(), String> {
+        let mut files = self
+            .files
+            .lock()
+            .map_err(|_| "catastrophic error (writing file)".to_string())?;
+        files.insert(path.to_owned(), contents.to_owned());
+        Ok(())
+    }
+    fn list_dir(&self, _: &str) -> Result<Vec<String>, String> {
+        let files = self
+            .files
+            .lock()
+            .map_err(|_| "catastrophic error reading files")?;
+
+        Ok(files
+            .keys()
+            .map(|p| p.to_string_lossy().to_string())
+            .collect())
     }
 }
 

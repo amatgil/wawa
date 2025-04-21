@@ -103,11 +103,11 @@ pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
     }
 
     let source = highlight_code(code.trim());
-    let result = run_uiua(strip_triple_ticks(code.trim()));
+    let result = run_uiua(strip_triple_ticks(code.trim()), &msg.attachments);
 
     let mut output = String::new();
     let mut attachments = Vec::new();
-    match result {
+    match result.await {
         Ok((stdout, result)) => {
             let there_is_stdout = !stdout.is_empty();
             let out_is_one_stdout = stdout.len() == 1 && result.is_empty();
@@ -307,11 +307,11 @@ pub async fn handle_show(msg: Message, http: Arc<Http>, code: &str) {
         .await;
         return;
     }
-    let result = run_uiua(strip_triple_ticks(code.trim()));
+    let result = run_uiua(strip_triple_ticks(code.trim()), &msg.attachments);
 
     let mut output = String::new();
     let mut attachments = Vec::new();
-    match result {
+    match result.await {
         Ok((stdout, result)) => {
             let there_is_stdout = !stdout.is_empty();
             let out_is_one_stdout = stdout.len() == 1 && result.is_empty();

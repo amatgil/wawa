@@ -5,12 +5,14 @@ use crate::*;
 use base64::engine::general_purpose::URL_SAFE;
 use base64::Engine;
 use image::ImageFormat;
-use serenity::all::{ArgumentConvert, Context, Emoji, EmojiParseError, Message};
+use serenity::all::{
+    ArgumentConvert, Attachment, Context, Embed, EmbedImage, Emoji, EmojiParseError, Message,
+};
 use serenity::futures::future::join_all;
 use std::fmt::Write;
 use std::str;
 use tracing::{error, trace};
-use uiua::format::*;
+use uiua::{format::*, SysBackend, SUBSCRIPT_DIGITS};
 use uiua::{PrimDocFragment, PrimDocLine, Primitive, Uiua};
 
 const MIN_AUTO_IMAGE_DIM: usize = 30;
@@ -75,15 +77,44 @@ impl From<uiua::Value> for OutputItem {
     }
 }
 
+fn to_subscript(i: usize) -> String {
+    i.to_string()
+        .chars()
+        .map(|d| d.to_digit(10).unwrap())
+        .map(|x| SUBSCRIPT_DIGITS[x as usize])
+        .collect()
+}
+
 /// Returns (stdout, top-most elements of stack)
-pub fn run_uiua(code: &str) -> Result<(Vec<OutputItem>, Vec<OutputItem>), String> {
+pub async fn run_uiua(
+    code: &str,
+    attachments: &[Attachment],
+) -> Result<(Vec<OutputItem>, Vec<OutputItem>), String> {
     trace!(code, "Starting to execute uiua code");
     if code.is_empty() {
         return Err("Cannot run empty code".into());
     }
 
-    let mut runtime = Uiua::with_backend(NativisedWebBackend::default())
-        .with_execution_limit(DEFAULT_EXECUTION_LIMIT);
+    let attachment_urls: Vec<&str> = attachments.iter().map(|a| a.url.as_ref()).collect();
+
+    let backend = NativisedWebBackend::default();
+    for (i, url) in attachment_urls.iter().enumerate() {
+        let data = reqwest::get(*url)
+            .await
+            .map_err(|_| format!("could not get image associated with attachment number {i}"))?;
+
+        backend
+            .file_write_all(
+                format!("img{}", i.to_string()).as_ref(),
+                &data.bytes().await.map_err(|_| {
+                    format!("could not interpret bytes of image of attachment number {i}")
+                })?,
+            )
+            .unwrap();
+    }
+
+    let mut runtime = Uiua::with_backend(backend).with_execution_limit(DEFAULT_EXECUTION_LIMIT);
+
     let exp_code = &format!("# Experimental!\n{code}");
 
     match runtime.run_str(exp_code) {

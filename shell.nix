@@ -1,7 +1,7 @@
 {
   pkgs ? import <nixpkgs>,
+  lib,
   overlays
-
 }:
 pkgs.mkShell {
   # Pinned packages available in the environment
@@ -15,13 +15,15 @@ pkgs.mkShell {
     git
     openssl.dev
     systemdLibs.dev
+    libiconv openssl pkg-config
   ];
 
   # Environment variables
   env = {
     RUST_BACKTRACE = "1";
     RUST_SRC_PATH = "${pkgs.rustPlatform.rustLibSrc}";
-    # For graphics n stuff
-    LD_LIBRARY_PATH = "$LD_LIBRARY_PATH:${pkgs.wayland}/lib:${pkgs.libxkbcommon}/lib:${pkgs.libglvnd}/lib";
+    PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig";
+    LD_LIBRARY_PATH = lib.makeLibraryPath [ pkgs.openssl ];
   };
+
 }
