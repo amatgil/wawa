@@ -90,16 +90,26 @@ pub async fn run_uiua(
     code: &str,
     attachments: &[Attachment],
 ) -> Result<(Vec<OutputItem>, Vec<OutputItem>), String> {
+    const MAX_ATTACHMENT_IMAGE_PIXEL_COUNT: u32 = 268435456;
+
     trace!(code, "Starting to execute uiua code");
     if code.is_empty() {
         return Err("Cannot run empty code".into());
     }
 
-    let attachment_urls: Vec<&str> = attachments.iter().map(|a| a.url.as_ref()).collect();
-
     let backend = NativisedWebBackend::default();
-    for (i, url) in attachment_urls.iter().enumerate() {
-        let data = reqwest::get(*url)
+    for (i, attachment) in attachments.iter().enumerate() {
+        let url = &attachment.url;
+        match (attachment.width, attachment.height) {
+            (Some(w), Some(h)) if w * h >= MAX_ATTACHMENT_IMAGE_PIXEL_COUNT => {
+                return Err(format!(
+                    "Attachment {i} has (width, height) := ({w}, {h}), which is too many pixels"
+                ))
+            }
+            _ => {}
+        }
+
+        let data = reqwest::get(url)
             .await
             .map_err(|_| format!("could not get image associated with attachment number {i}"))?;
 
