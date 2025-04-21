@@ -105,7 +105,7 @@ pub async fn run_uiua(
 
         backend
             .file_write_all(
-                format!("img{}", i.to_string()).as_ref(),
+                format!("img{}", i).as_ref(),
                 &data.bytes().await.map_err(|_| {
                     format!("could not interpret bytes of image of attachment number {i}")
                 })?,
@@ -229,7 +229,7 @@ pub async fn emoji_from_name(
     msg: Message,
 ) -> Result<Emoji, EmojiParseError> {
     dbg!(name);
-    dbg!(Emoji::convert(ctx.clone(), msg.guild_id, Some(msg.channel_id), &name).await)
+    dbg!(Emoji::convert(ctx.clone(), msg.guild_id, Some(msg.channel_id), name).await)
 }
 
 async fn print_emoji(c: &Primitive, ctx: Context, msg: Message) -> String {
