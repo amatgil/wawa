@@ -39,7 +39,7 @@ impl From<uiua::Value> for OutputItem {
         use uiua::Value;
 
         // Audio?
-        if value.shape().last().is_some_and(|&n| n >= 44100 / 4)
+        if value.shape.last().is_some_and(|&n| n >= 44100 / 4)
             && matches!(&value, Value::Num(arr) if arr.elements().all(|x| x.abs() <= 5.0))
         {
             if let Ok(this) = try_from_ogg(&value) {
@@ -60,7 +60,7 @@ impl From<uiua::Value> for OutputItem {
         }
         // Gif
         if let Ok(gif) = value_to_gif_bytes(&value, 16.0) {
-            match value.shape().dims() {
+            match value.shape.dims() {
                 &[f, h, w] | &[f, h, w, _]
                     if h >= MIN_AUTO_IMAGE_DIM && w >= MIN_AUTO_IMAGE_DIM && f >= 5 =>
                 {

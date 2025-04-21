@@ -161,7 +161,7 @@ pub fn highlight_code(code: &str) -> String {
                     })
                     .collect();
                 let style = prim
-                    .map(|p| style_of_prim(p, p.sig().map(|s| s.args as i32)))
+                    .map(|p| style_of_prim(p, p.sig().map(|s| s.args() as i32)))
                     .unwrap_or_default();
                 with_style(&subs_text, style)
             }
