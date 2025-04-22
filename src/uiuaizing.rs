@@ -90,7 +90,7 @@ pub async fn run_uiua(
     code: &str,
     attachments: &[Attachment],
 ) -> Result<(Vec<OutputItem>, Vec<OutputItem>), String> {
-    const MAX_ATTACHMENT_IMAGE_PIXEL_COUNT: u32 = 2000 * 2000;
+    const MAX_ATTACHMENT_IMAGE_PIXEL_COUNT: u32 = 2048 * 2048;
 
     trace!(code, "Starting to execute uiua code");
     if code.is_empty() {
@@ -106,11 +106,12 @@ pub async fn run_uiua(
         full_code.push_str("");
         let url = &attachment.url;
         match (attachment.width, attachment.height) {
-            (Some(w), Some(h)) if w * h >= MAX_ATTACHMENT_IMAGE_PIXEL_COUNT => {
+            (Some(w), Some(h)) if w * h > MAX_ATTACHMENT_IMAGE_PIXEL_COUNT => {
                 return Err(format!(
                     "Attachment {i} has (width, height) := ({w}, {h}), which is too many pixels (maximum is {MAX_ATTACHMENT_IMAGE_PIXEL_COUNT})"
                 ))
             }
+            (None, _) | (_, None) => return Err(format!("Attachment {i} did not come with a width or height, and I've only implemented images for now")),
             _ => {}
         }
 
