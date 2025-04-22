@@ -2,9 +2,12 @@ pub use std::sync::Arc;
 use std::sync::LazyLock;
 
 use serenity::{
-    all::{Reaction, ReactionType, Ready},
+    all::{
+        CreateInteractionResponse, CreateInteractionResponseMessage, Interaction, Reaction,
+        ReactionType, Ready,
+    },
     async_trait,
-    model::channel::Message,
+    model::{application::Command, channel::Message},
     prelude::*,
 };
 use tracing::{debug, error, info, instrument, span, trace, Level};
@@ -81,7 +84,7 @@ async fn handle_message(ctx: Context, msg: Message) {
             "e" | "emojify" => handle_emojification(msg, ctx, s[space_idx..].trim()).await,
             "r" | "run" => handle_run(msg, ctx.http, s[space_idx..].trim()).await,
             "s" | "show" => handle_show(msg, ctx.http, s[space_idx..].trim()).await,
-            "shutdown" => send_message(msg, &ctx.http, "Ok, shutting down now").await, // This does not shutdown
+            "shutdown" => send_message(msg, &ctx.http, "Ok, shutting down now...").await, // This does not shutdown
             unrec => handle_unrecognized(msg, ctx.http, unrec).await,
         }
     } else {
@@ -114,8 +117,44 @@ impl EventHandler for Handler {
         tokio::spawn(handle_message(ctx, msg));
     }
 
-    async fn ready(&self, _: Context, ready: Ready) {
+    async fn ready(&self, ctx: Context, ready: Ready) {
         info!(name = ready.user.name, "Bot is connected");
+        for command_reg in [
+            slash_commands::ping::register,
+            slash_commands::version::register,
+            slash_commands::help::register,
+            slash_commands::format::register,
+            slash_commands::pad::register,
+            slash_commands::docs::register,
+            slash_commands::emojify::register,
+            slash_commands::run::register,
+            slash_commands::show::register,
+            slash_commands::shutdown::register,
+        ] {
+            match Command::create_global_command(&ctx.http, command_reg()).await {
+                Ok(o) => println!("Registered {o:?}"),
+                Err(e) => error!(e = e.to_string(), "Error (re)-creating slash command"),
+            }
+        }
+    }
+
+    async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
+        if let Interaction::Command(command) = interaction {
+            println!("Received command interaction: {command:#?}");
+
+            let content = match command.data.name.as_str() {
+                "ping" => Some(slash_commands::ping::run(&command.data.options())),
+                c => Some(format!("slash command {c} not implemented")),
+            };
+
+            if let Some(content) = content {
+                let data = CreateInteractionResponseMessage::new().content(content);
+                let builder = CreateInteractionResponse::Message(data);
+                if let Err(why) = command.create_response(&ctx.http, builder).await {
+                    println!("Cannot respond to slash command: {why}");
+                }
+            }
+        }
     }
     async fn reaction_add(&self, ctx: Context, reaction: Reaction) {
         let reacted_message = match reaction.message(&ctx.http).await {

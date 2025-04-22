@@ -10,7 +10,7 @@ use tracing::{debug, error, info, instrument, trace};
 
 pub const MAX_MSG_LEN: usize = 1850;
 
-const HELP_MESSAGE: &str = r#"# wawa
+pub const HELP_MESSAGE: &str = r#"# wawa
 Your friendly neighbourhood uiua bot!
 
 Run with either `w!` or `wawa!`
