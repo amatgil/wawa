@@ -46,11 +46,14 @@ pub mod format {
         CreateCommand::new("format")
             .description("format uiua code")
             .kind(serenity::all::CommandType::ChatInput)
-            .add_option(CreateCommandOption::new(
-                serenity::all::CommandOptionType::String,
-                "code",
-                "the code to be formatted",
-            ))
+            .add_option(
+                CreateCommandOption::new(
+                    serenity::all::CommandOptionType::String,
+                    "code",
+                    "the code to be formatted",
+                )
+                .required(true),
+            )
     }
     pub fn run(options: &[ResolvedOption]) -> String {
         "unimplemented".to_string()
@@ -64,11 +67,14 @@ pub mod pad {
         CreateCommand::new("pad")
             .description("generate pad link of code")
             .kind(serenity::all::CommandType::ChatInput)
-            .add_option(CreateCommandOption::new(
-                serenity::all::CommandOptionType::String,
-                "code",
-                "the code to be pad-ed",
-            ))
+            .add_option(
+                CreateCommandOption::new(
+                    serenity::all::CommandOptionType::String,
+                    "code",
+                    "the code to be pad-ed",
+                )
+                .required(true),
+            )
     }
     pub fn run(_options: &[ResolvedOption]) -> String {
         "unimplemented".to_string()
@@ -78,18 +84,28 @@ pub mod pad {
 pub mod docs {
     use serenity::all::{CreateCommand, CreateCommandOption, ResolvedOption};
 
+    use crate::get_docs;
+
     pub fn register() -> CreateCommand {
         CreateCommand::new("docs")
             .description("find docs of function")
             .kind(serenity::all::CommandType::ChatInput)
-            .add_option(CreateCommandOption::new(
-                serenity::all::CommandOptionType::String,
-                "docs",
-                "the function whose docs to get",
-            ))
+            .add_option(
+                CreateCommandOption::new(
+                    serenity::all::CommandOptionType::String,
+                    "fnname",
+                    "the function whose docs to get",
+                )
+                .required(true),
+            )
     }
-    pub fn run(_options: &[ResolvedOption]) -> String {
-        "unimplemented".to_string()
+    pub fn run(options: &[ResolvedOption]) -> String {
+        let fnname = options
+            .iter()
+            .find(|o| o.name == "fnname")
+            .expect("mandatory option, must exist");
+        "unimpld :(".to_string()
+        //get_docs(fnname)
     }
 }
 
@@ -100,11 +116,14 @@ pub mod emojify {
         CreateCommand::new("emojify")
             .description("emojify code")
             .kind(serenity::all::CommandType::ChatInput)
-            .add_option(CreateCommandOption::new(
-                serenity::all::CommandOptionType::String,
-                "code",
-                "the code to be emojifiy-ed",
-            ))
+            .add_option(
+                CreateCommandOption::new(
+                    serenity::all::CommandOptionType::String,
+                    "code",
+                    "the code to be emojifiy-ed",
+                )
+                .required(true),
+            )
     }
     pub fn run(_options: &[ResolvedOption]) -> String {
         "unimplemented".to_string()
@@ -118,11 +137,14 @@ pub mod run {
         CreateCommand::new("run")
             .description("run code")
             .kind(serenity::all::CommandType::ChatInput)
-            .add_option(CreateCommandOption::new(
-                serenity::all::CommandOptionType::String,
-                "code",
-                "the code to be ran",
-            ))
+            .add_option(
+                CreateCommandOption::new(
+                    serenity::all::CommandOptionType::String,
+                    "code",
+                    "the code to be ran",
+                )
+                .required(true),
+            )
     }
     pub fn run(_options: &[ResolvedOption]) -> String {
         "unimplemented".to_string()
@@ -136,13 +158,20 @@ pub mod show {
         CreateCommand::new("show")
             .description("run code without displaying the source")
             .kind(serenity::all::CommandType::ChatInput)
-            .add_option(CreateCommandOption::new(
-                serenity::all::CommandOptionType::String,
-                "code",
-                "the code to be ran",
-            ))
+            .add_option(
+                CreateCommandOption::new(
+                    serenity::all::CommandOptionType::String,
+                    "code",
+                    "the code to be ran",
+                )
+                .required(true),
+            )
     }
-    pub fn run(_options: &[ResolvedOption]) -> String {
+    pub fn run(options: &[ResolvedOption]) -> String {
+        let code = options
+            .iter()
+            .find(|o| o.name == "code")
+            .expect("mandatory option, must exist");
         "unimplemented".to_string()
     }
 }

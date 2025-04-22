@@ -132,7 +132,7 @@ impl EventHandler for Handler {
             slash_commands::shutdown::register,
         ] {
             match Command::create_global_command(&ctx.http, command_reg()).await {
-                Ok(o) => println!("Registered {o:?}"),
+                Ok(o) => trace!(o=?o, "Registered command"),
                 Err(e) => error!(e = e.to_string(), "Error (re)-creating slash command"),
             }
         }
@@ -140,19 +140,15 @@ impl EventHandler for Handler {
 
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         if let Interaction::Command(command) = interaction {
-            println!("Received command interaction: {command:#?}");
-
             let content = match command.data.name.as_str() {
-                "ping" => Some(slash_commands::ping::run(&command.data.options())),
-                c => Some(format!("slash command {c} not implemented")),
+                "ping" => slash_commands::ping::run(&command.data.options()),
+                c => format!("slash command {c} not implemented"),
             };
 
-            if let Some(content) = content {
-                let data = CreateInteractionResponseMessage::new().content(content);
-                let builder = CreateInteractionResponse::Message(data);
-                if let Err(why) = command.create_response(&ctx.http, builder).await {
-                    println!("Cannot respond to slash command: {why}");
-                }
+            let data = CreateInteractionResponseMessage::new().content(content);
+            let builder = CreateInteractionResponse::Message(data);
+            if let Err(e) = command.create_response(&ctx.http, builder).await {
+                error!(e = ?e, "Cannot respond to slash command");
             }
         }
     }
