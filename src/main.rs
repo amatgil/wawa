@@ -118,40 +118,16 @@ impl EventHandler for Handler {
     }
 
     async fn ready(&self, ctx: Context, ready: Ready) {
-        info!(name = ready.user.name, "Bot is connected");
-        for command_reg in [
-            slash_commands::ping::register,
-            slash_commands::version::register,
-            slash_commands::help::register,
-            slash_commands::format::register,
-            slash_commands::pad::register,
-            slash_commands::docs::register,
-            slash_commands::emojify::register,
-            slash_commands::run::register,
-            slash_commands::show::register,
-            slash_commands::shutdown::register,
-        ] {
-            match Command::create_global_command(&ctx.http, command_reg()).await {
-                Ok(o) => trace!(o=?o, "Registered command"),
-                Err(e) => error!(e = e.to_string(), "Error (re)-creating slash command"),
-            }
-        }
+        trace!(?ready, "Wawa ready for action");
+        trace!("deleting global commands, just in case");
+        dbg!(
+            serenity::model::application::Command::set_global_commands(ctx.http, vec![])
+                .await
+                .unwrap()
+        );
+        trace!("deleted global commands");
     }
 
-    async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
-        if let Interaction::Command(command) = interaction {
-            let content = match command.data.name.as_str() {
-                "ping" => slash_commands::ping::run(&command.data.options()),
-                c => format!("slash command {c} not implemented"),
-            };
-
-            let data = CreateInteractionResponseMessage::new().content(content);
-            let builder = CreateInteractionResponse::Message(data);
-            if let Err(e) = command.create_response(&ctx.http, builder).await {
-                error!(e = ?e, "Cannot respond to slash command");
-            }
-        }
-    }
     async fn reaction_add(&self, ctx: Context, reaction: Reaction) {
         let reacted_message = match reaction.message(&ctx.http).await {
             Ok(rm) => rm,
