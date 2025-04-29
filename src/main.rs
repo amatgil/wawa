@@ -32,7 +32,14 @@ async fn handle_message(ctx: Context, msg: Message) {
     }
     let contents = msg.content_safe(ctx.cache.clone()).clone();
     let trimmed = contents.trim();
-    trace!(text = trimmed, "Starting to parse message");
+    trace!(
+        text = trimmed,
+        srv = msg
+            .guild_id
+            .map(|g| g.to_string())
+            .unwrap_or("No GuildID".to_string()),
+        "Starting to parse message"
+    );
 
     let prefixes = [
         "w!",
@@ -114,8 +121,15 @@ impl EventHandler for Handler {
         tokio::spawn(handle_message(ctx, msg));
     }
 
-    async fn ready(&self, _: Context, ready: Ready) {
+    async fn ready(&self, ctx: Context, ready: Ready) {
         info!(name = ready.user.name, "Bot is connected");
+        trace!("deleting global commands, just in case");
+        dbg!(
+            serenity::model::application::Command::set_global_commands(ctx.http, vec![])
+                .await
+                .unwrap()
+        );
+        trace!("deleted global commands");
     }
     async fn reaction_add(&self, ctx: Context, reaction: Reaction) {
         let reacted_message = match reaction.message(&ctx.http).await {
