@@ -191,7 +191,7 @@ pub async fn get_docs(f: &str, ctx: Context, msg: Message) -> String {
             .join("\n");
             format!("\n{short}\n\n\n{long}\n\n([More information](https://uiua.org/docs/{f}))")
         }
-        None => format!("No docs found for '{f}', did you spell it right?"),
+        None => format!("No docs found for '{f}', did you spell it right? (For full docs, see [full docs](https://www.uiua.org/docs))"),
     }
 }
 
