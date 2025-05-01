@@ -37,7 +37,7 @@ impl From<uiua::Value> for OutputItem {
             encoder.finish()?;
             Ok(OutputItem::Audio(sink, None))
         }
-        use uiua::encode::*;
+        use uiua::media::*;
         use uiua::Value;
 
         // Audio?
