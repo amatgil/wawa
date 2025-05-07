@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::time::Duration;
 
 use crate::backend::{NativisedWebBackend, OutputItem};
@@ -6,12 +7,13 @@ use base64::engine::general_purpose::URL_SAFE;
 use base64::Engine;
 use image::ImageFormat;
 use serenity::all::{
-    ArgumentConvert, Attachment, Context, Embed, EmbedImage, Emoji, EmojiParseError, Message,
+    ArgumentConvert, Attachment, Context, CreateAttachment, Embed, EmbedImage, Emoji,
+    EmojiParseError, Http, Message,
 };
 use serenity::futures::future::join_all;
 use std::fmt::Write;
 use std::str;
-use tracing::{error, trace};
+use tracing::{error, info, trace};
 use uiua::{format::*, SysBackend, SUBSCRIPT_DIGITS};
 use uiua::{PrimDocFragment, PrimDocLine, Primitive, Uiua};
 
@@ -293,4 +295,172 @@ pub fn format_and_get_pad_link(code: &str) -> String {
         trace!("Pad message was too long, skipping source");
         format!("[pad]({link})")
     }
+}
+
+pub async fn get_output(
+    msg: Message,
+    http: Arc<Http>,
+    code: &str,
+) -> Option<(String, Vec<CreateAttachment>)> {
+    let code = strip_triple_ticks(code.trim());
+
+    if code.contains("```") {
+        info!(code = %code, "Input contained backticks, disallowing");
+        send_message(
+            msg,
+            &http,
+            "Input contained triple backticks, which I disallow",
+        )
+        .await;
+        return None;
+    }
+    let result = run_uiua(strip_triple_ticks(code.trim()), &msg.attachments);
+
+    let mut output = String::new();
+    let mut attachments = Vec::new();
+    match result.await {
+        Ok((stdout, result)) => {
+            let there_is_stdout = !stdout.is_empty();
+            let out_is_one_stdout = stdout.len() == 1 && result.is_empty();
+            if there_is_stdout {
+                let (output_stdout, mut attach_stdout) = stdout.into_iter().fold(
+                    (String::new(), Vec::new()),
+                    |(mut o_acc, attachments), item| match item {
+                        OutputItem::String(s) => {
+                            let _ = writeln!(o_acc, "{}", s);
+                            (o_acc, attachments)
+                        }
+                        OutputItem::Svg(s) => update_stdout_output(
+                            o_acc,
+                            attachments,
+                            s.as_bytes(),
+                            None,
+                            "svg",
+                            "svg",
+                            out_is_one_stdout,
+                        ),
+                        OutputItem::Image(bytes, label) => update_stdout_output(
+                            o_acc,
+                            attachments,
+                            &bytes,
+                            label,
+                            "image",
+                            "png",
+                            out_is_one_stdout,
+                        ),
+                        OutputItem::Gif(bytes, label) => update_stdout_output(
+                            o_acc,
+                            attachments,
+                            &bytes,
+                            label,
+                            "gif",
+                            "gif",
+                            out_is_one_stdout,
+                        ),
+                        OutputItem::Audio(bytes, label) => update_stdout_output(
+                            o_acc,
+                            attachments,
+                            &bytes,
+                            label,
+                            "audio",
+                            "ogg",
+                            out_is_one_stdout,
+                        ),
+                        OutputItem::Continuation(n) => {
+                            let _ =
+                                writeln!(o_acc, "<{n} more item{}>", if n == 1 { "" } else { "s" });
+                            (o_acc, attachments)
+                        }
+                        _ => {
+                            let _ = writeln!(o_acc, "<Unimplemented type>",);
+                            (o_acc, attachments)
+                        }
+                    },
+                );
+                output.push_str(&output_stdout);
+                attachments.append(&mut attach_stdout);
+            } else {
+                let (output_stack, mut attach_stack) = result.into_iter().fold(
+                    (String::new(), Vec::new()),
+                    |(mut output, attachments), item| match item {
+                        OutputItem::String(s) => {
+                            let _ = writeln!(output, "{}", s);
+                            (output, attachments)
+                        }
+                        OutputItem::Svg(s) => update_stdout_output(
+                            output,
+                            attachments,
+                            s.as_bytes(),
+                            None,
+                            "svg",
+                            "svg",
+                            out_is_one_stdout,
+                        ),
+                        OutputItem::Image(bytes, label) => update_stdout_output(
+                            output,
+                            attachments,
+                            &bytes,
+                            label,
+                            "image",
+                            "png",
+                            out_is_one_stdout,
+                        ),
+                        OutputItem::Gif(bytes, label) => update_stdout_output(
+                            output,
+                            attachments,
+                            &bytes,
+                            label,
+                            "gif",
+                            "gif",
+                            out_is_one_stdout,
+                        ),
+                        OutputItem::Audio(bytes, label) => update_stdout_output(
+                            output,
+                            attachments,
+                            &bytes,
+                            label,
+                            "audio",
+                            "ogg",
+                            out_is_one_stdout,
+                        ),
+                        OutputItem::Continuation(n) => {
+                            let _ = writeln!(
+                                output,
+                                "<{n} more item{}>",
+                                if n == 1 { "" } else { "s" }
+                            );
+                            (output, attachments)
+                        }
+                        _ => {
+                            let _ = writeln!(output, "<Unimplemented type>",);
+                            (output, attachments)
+                        }
+                    },
+                );
+                output.push_str(&output_stack);
+                attachments.append(&mut attach_stack);
+            }
+        }
+        Err(err) => output = err,
+    };
+
+    // Prepare output
+    let result = if output.contains("```") {
+        info!(?output, "Output contained triple backticks, denying");
+        "Output contained triple backticks, which I disallow".to_string()
+    } else if output.is_empty() && attachments.is_empty() {
+        trace!("Result was empty");
+        "<Empty result>".to_string()
+    } else if output.is_empty() {
+        String::new()
+    } else {
+        trace!(
+            ?code,
+            ?output,
+            "Sending correctly formed result of running the code"
+        );
+        format!("```\n{output}\n```")
+    };
+
+    Some((output, attachments))
 }
