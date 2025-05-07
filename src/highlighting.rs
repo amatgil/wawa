@@ -104,7 +104,7 @@ pub fn highlight_code(code: &str) -> String {
         last_cursor = s.span.end.byte_pos;
 
         let fmtd = match s.value {
-            SpanKind::Primitive(p, sig) => print_prim(p, sig),
+            SpanKind::Primitive(p, sig) => print_prim(p, sig.map(|s| s.n()).flatten()),
             SpanKind::String => with_style(text, AnsiState::just_color(AnsiColor::Cyan)),
             SpanKind::Number => with_style(
                 text,
