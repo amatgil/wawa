@@ -91,6 +91,8 @@ fn with_style(s: &str, ansi: AnsiState) -> String {
 
 /// Returns code surrounded by ANSI backticks to fake highlighting
 pub fn highlight_code(code: &str) -> String {
+    return "```Highlighter broke, down for maintenence (use wawa!show instead)```".to_string();
+
     let spans: Vec<_> = uiua::lsp::Spans::from_input(code).spans;
     let mut last_cursor: u32 = 0;
     let mut r: String = spans.into_iter().fold(String::new(), |mut out, s| {
