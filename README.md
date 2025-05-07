@@ -55,6 +55,27 @@ quite limited, discord does not offer many much of the ansi spec).
 - [ ] Rerun code if source was edited
 - [ ] if the output is a single image it should not show any extra data like <attachment #1: image> or stuff
 
+# Server install
+Place this under `/etc/systemd/system/wawa.service` to make it a deamon:
+```systemd
+[Unit]
+Description=wawa discord bot
+After=network.target
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=700ms
+RestartSec=3
+StartLimitIntervalSec=0
+WorkingDirectory= # Path to your working directory here
+Environment="RUST_LOG=wawa=trace,error"
+ExecStart= # Path to your binary goes here
+MemoryMax=200M
+
+[Install]
+WantedBy=multi-user.target
+```
 
 # TODO
 - After "w!s Lena; kork0.5", reacting to the wawa response with :uiua: gives back the result of "w!pad Lena; kork0.5"
