@@ -56,7 +56,7 @@ quite limited, discord does not offer many much of the ansi spec).
 - [ ] if the output is a single image it should not show any extra data like <attachment #1: image> or stuff
 
 # Server install
-Place this under `/etc/systemd/system/wawa.service` to make it a deamon:
+Place this under `/etc/systemd/system/wawa.service` to make it a daemon:
 ```systemd
 [Unit]
 Description=wawa discord bot
