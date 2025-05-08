@@ -19,13 +19,20 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    
     - name: Get new uiua
       run: cargo update
     - name: Build wawa
       run: cargo build --verbose
+        
+    - name: Set up ssh
+      run: |
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+        chmod 600 ~/.ssh/id_ed25519
+        ssh-keyscan -H ${{ secrets.WAWASRV }} >> ~/.ssh/known_hosts
     - name: Temporarily stop daemon in server
-      run: ssh -o "StrictHostKeyChecking=no" ${{ secrets.WAWA_SRV }} "systemctl stop wawa"
+      run: ssh -o "StrictHostKeyChecking=no" ${{ secrets.WAWASRV }} "systemctl stop wawa"
     - name: Transfer file
-      run: scp -o "StrictHostKeyChecking=no" target/release/wawa ${{ secrets.WAWA_SRV }}:${{ secrets.WAWA_BIN_PATH }}
+      run: scp -o "StrictHostKeyChecking=no" target/release/wawa ${{ secrets.WAWASRV }}:${{ secrets.WAWABINPATH }}
     - name: Re-engage daemon
-      run: ssh -o "StrictHostKeyChecking=no" ${{ secrets.WAWA_SRV }} "systemctl start wawa"
+      run: ssh -o "StrictHostKeyChecking=no" ${{ secrets.WAWASRV }} "systemctl start wawa"
