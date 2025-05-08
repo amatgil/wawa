@@ -1,14 +1,17 @@
-name: Rust
+name: Compile and deploy
 
 on:
   push:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
+  workflow_dispatch:
+  schedule:
+  - cron: "0 10 * * *" # At 10:00 UTC every day
 
 env:
   CARGO_TERM_COLOR: always
-
+  
 jobs:
   build:
 
@@ -16,7 +19,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Build
+    - name: Get new uiua
+      run: cargo update
+    - name: Build wawa
       run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
+    - name: Temporarily stop daemon in server
+      run: ssh -o StrictHostKeyChecking=no ${{ secrets.WAWA_SRV }} "systemctl stop wawa"
+    - name: Transfer file
+      run: scp -o StrictHostKeyChecking=no target/release/wawa ${{ secrets.WAWA_SRV }}:${{ secrets.WAWA_BIN_PATH }}
+    - name: Re-engage daemon
+      run: ssh -o StrictHostKeyChecking=no ${{ secrets.WAWA_SRV }} "systemctl start wawa"
