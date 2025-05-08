@@ -30,6 +30,8 @@ jobs:
       run: |
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
         chmod 600 ~/.ssh/id_ed25519
+        echo "${{ secrets.DESTHOST }}" > ~/.ssh/known_hosts
+
     - name: Temporarily stop daemon in server
       run: ssh ${{ secrets.WAWASRV }} "systemctl stop wawa"
     - name: Transfer file
