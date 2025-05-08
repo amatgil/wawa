@@ -16,15 +16,16 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-
+    environment: Deployment env
+    
     steps:
     - uses: actions/checkout@v4
+    
     
     - name: Get new uiua
       run: cargo update
     - name: Build wawa
       run: cargo build --verbose
-        
     - name: Set up ssh
       run: |
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
