@@ -29,7 +29,6 @@ jobs:
       run: |
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
         chmod 600 ~/.ssh/id_ed25519
-        ssh-keyscan -H ${{ secrets.WAWASRV }} >> ~/.ssh/known_hosts
     - name: Temporarily stop daemon in server
       run: ssh -o "StrictHostKeyChecking=no" ${{ secrets.WAWASRV }} "systemctl stop wawa"
     - name: Transfer file
