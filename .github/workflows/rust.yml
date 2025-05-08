@@ -30,8 +30,8 @@ jobs:
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
         chmod 600 ~/.ssh/id_ed25519
     - name: Temporarily stop daemon in server
-      run: ssh -o "StrictHostKeyChecking=no" ${{ secrets.WAWASRV }} "systemctl stop wawa"
+      run: ssh ${{ secrets.WAWASRV }} "systemctl stop wawa"
     - name: Transfer file
-      run: scp -o "StrictHostKeyChecking=no" target/release/wawa ${{ secrets.WAWASRV }}:${{ secrets.WAWABINPATH }}
+      run: scp target/release/wawa ${{ secrets.WAWASRV }}:${{ secrets.WAWABINPATH }}
     - name: Re-engage daemon
-      run: ssh -o "StrictHostKeyChecking=no" ${{ secrets.WAWASRV }} "systemctl start wawa"
+      run: ssh ${{ secrets.WAWASRV }} "systemctl start wawa"
