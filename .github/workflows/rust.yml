@@ -39,4 +39,4 @@ jobs:
     - name: Re-engage daemon
       run: ssh ${{ secrets.WAWASRV }} "systemctl start wawa"
     - name: Log the occurance
-      run: ssh ${{ secrets.WAWASRV }} "$(date) >> update_times"
+      run: ssh ${{ secrets.WAWASRV }} "date >> update_times"
