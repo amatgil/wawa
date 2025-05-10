@@ -1,4 +1,4 @@
-name: Compile and deploy
+name: Compile
 
 on:
   push:
@@ -12,15 +12,21 @@ on:
 env:
   CARGO_TERM_COLOR: always
   
+
 jobs:
   build:
     runs-on: ubuntu-latest
     environment: Deployment env
+    outputs:
+        should-deploy: ${{ steps.cargo-update.outputs.SHOULD_UPDATE }}
     steps:
     - uses: actions/checkout@v4
     
     - name: Get new uiua
-      run: cargo update
+      id: cargo-update
+      run: cargo update 2> updatelog
+    - name: Record SHOULDDEPLOY envvar
+      run: grep 'Updating uiua' updatelog && echo "SHOULD_UPDATE=yes" >> $GITHUB_OUTPUT || echo "SHOULD_UPDATE=no" >> $GITHUB_OUTPUT
     - name: Build wawa
       run: cargo build --verbose --release
     - name: Upload artifact for sending
@@ -29,14 +35,18 @@ jobs:
         name: wawa-binary-artifact
         path: target/release/wawa
 
-  send: 
+  deploy: 
+    needs: build
+
     runs-on: ubuntu-latest
     environment: Deployment env
+
+    if: ${{ needs.build.outputs.SHOULDDEPLOY == 'yes' }}
     steps:
-    - name: Get binary artifact
-      uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@v4
       with:
         name: wawa-binary-artifact
+
     - name: Set up ssh
       run: |
         mkdir ~/.ssh
@@ -51,4 +61,3 @@ jobs:
       run: ssh ${{ secrets.WAWASRV }} "systemctl start wawa"
     - name: Log the occurance
       run: ssh ${{ secrets.WAWASRV }} "date >> update_times"
-    
