@@ -14,30 +14,41 @@ env:
   
 jobs:
   build:
-
     runs-on: ubuntu-latest
     environment: Deployment env
-    
     steps:
     - uses: actions/checkout@v4
-    
     
     - name: Get new uiua
       run: cargo update
     - name: Build wawa
       run: cargo build --verbose --release
+    - name: Upload artifact for sending
+      uses: actions/upload-artifact@v4
+      with:
+        name: wawa-binary-artifact
+        path: target/release/wawa
+
+  send: 
+    runs-on: ubuntu-latest
+    environment: Deployment env
+    steps:
+    - name: Get binary artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: wawa-binary-artifact
     - name: Set up ssh
       run: |
         mkdir ~/.ssh
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
         chmod 600 ~/.ssh/id_ed25519
         echo "${{ secrets.DESTHOST }}" > ~/.ssh/known_hosts
-
     - name: Temporarily stop daemon in server
       run: ssh ${{ secrets.WAWASRV }} "systemctl stop wawa"
     - name: Transfer file
-      run: scp target/release/wawa ${{ secrets.WAWASRV }}:${{ secrets.WAWABINPATH }}
+      run: scp wawa ${{ secrets.WAWASRV }}:${{ secrets.WAWABINPATH }}
     - name: Re-engage daemon
       run: ssh ${{ secrets.WAWASRV }} "systemctl start wawa"
     - name: Log the occurance
       run: ssh ${{ secrets.WAWASRV }} "date >> update_times"
+    
