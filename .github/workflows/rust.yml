@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: Deployment env
     outputs:
-        should-deploy: ${{ steps.cargo-update.outputs.SHOULD_UPDATE }}
+        should-deploy: ${{ steps.cargo-update.outputs.SHOULDDEPLOY }}
     steps:
     - uses: actions/checkout@v4
     
@@ -26,7 +26,7 @@ jobs:
       id: cargo-update
       run: cargo update 2> updatelog
     - name: Record SHOULDDEPLOY envvar
-      run: grep 'Updating uiua' updatelog && echo "SHOULD_UPDATE=yes" >> $GITHUB_OUTPUT || echo "SHOULD_UPDATE=yes" >> $GITHUB_OUTPUT
+      run: grep 'Updating uiua' updatelog && echo "SHOULDDEPLOY=yes" >> $GITHUB_OUTPUT || echo "SHOULDDEPLOY=yes" >> $GITHUB_OUTPUT
 
     - name: Build wawa
       if: ${{ steps.cargo-update.SHOULDDEPLOY == 'yes' }}
