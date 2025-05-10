@@ -28,6 +28,7 @@ jobs:
       run: cargo build --verbose --release
     - name: Set up ssh
       run: |
+        mkdir ~/.ssh
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
         chmod 600 ~/.ssh/id_ed25519
         echo "${{ secrets.DESTHOST }}" > ~/.ssh/known_hosts
