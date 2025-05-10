@@ -27,9 +27,12 @@ jobs:
       run: cargo update 2> updatelog
     - name: Record SHOULDDEPLOY envvar
       run: grep 'Updating uiua' updatelog && echo "SHOULD_UPDATE=yes" >> $GITHUB_OUTPUT || echo "SHOULD_UPDATE=no" >> $GITHUB_OUTPUT
+
     - name: Build wawa
+      if: ${{ steps.cargo-update.SHOULDDEPLOY == 'yes' }}
       run: cargo build --verbose --release
     - name: Upload artifact for sending
+      if: ${{ steps.cargo-update.SHOULDDEPLOY == 'yes' }}
       uses: actions/upload-artifact@v4
       with:
         name: wawa-binary-artifact
