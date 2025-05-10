@@ -26,7 +26,7 @@ jobs:
       id: cargo-update
       run: cargo update 2> updatelog
     - name: Record SHOULDDEPLOY envvar
-      run: grep 'Updating uiua' updatelog && echo "SHOULD_UPDATE=denial" >> $GITHUB_OUTPUT || echo "SHOULD_UPDATE=no" >> $GITHUB_OUTPUT
+      run: grep 'Updating uiua' updatelog && echo "SHOULD_UPDATE=yes" >> $GITHUB_OUTPUT || echo "SHOULD_UPDATE=yes" >> $GITHUB_OUTPUT
 
     - name: Build wawa
       if: ${{ steps.cargo-update.SHOULDDEPLOY == 'yes' }}
