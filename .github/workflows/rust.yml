@@ -26,8 +26,9 @@ jobs:
       run: cargo update 2> updatelog
     - name: Record SHOULDDEPLOY envvar
       id: should-deploy-step
-      run: grep 'Updating uiua' updatelog && echo "SHOULDDEPLOY=yes" >> $GITHUB_OUTPUT || echo "SHOULDDEPLOY=no" >> $GITHUB_OUTPUT
-
+      run: |
+        grep 'Updating uiua' updatelog && echo "SHOULDDEPLOY=yes" >> $GITHUB_OUTPUT || echo "SHOULDDEPLOY=no" >> $GITHUB_OUTPUT
+        cat Cargo.lock | grep -3 uiua 
     - name: Build wawa
       if: ${{ steps.should-deploy-step.outputs.SHOULDDEPLOY == 'yes' }}
       run: cargo build --verbose --release
