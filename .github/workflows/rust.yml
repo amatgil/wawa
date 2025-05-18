@@ -23,7 +23,7 @@ jobs:
     - uses: actions/checkout@v4
     
     - name: Get new uiua
-      run: cargo update 2> updatelog
+      run: cargo update -p uiua 2> updatelog
     - name: Record SHOULDDEPLOY envvar
       id: should-deploy-step
       run: |
