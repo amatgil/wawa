@@ -91,11 +91,9 @@ pub async fn run_uiua(
 
     let backend = NativisedWebBackend::default();
     let mut full_code = String::new();
-    full_code.push_str(&format!("# Experimental!\n"));
 
     for (i, attachment) in attachments.iter().rev().enumerate() {
         let i = attachments.len() - i - 1;
-        full_code.push_str("");
         let url = &attachment.url;
         match (attachment.width, attachment.height) {
             (Some(w), Some(h)) if w * h > MAX_ATTACHMENT_IMAGE_PIXEL_COUNT => {
@@ -126,7 +124,7 @@ pub async fn run_uiua(
 
     let mut runtime = Uiua::with_backend(backend).with_execution_limit(DEFAULT_EXECUTION_LIMIT);
 
-    match runtime.run_str(&full_code) {
+    match runtime.compile_run(|comp| comp.experimental(true).load_str(&full_code)) {
         Ok(_c) => {
             drop(_c); // Holds ref to backend, cringe
             trace!(code, "Code ran successfully");
