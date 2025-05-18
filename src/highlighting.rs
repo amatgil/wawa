@@ -4,7 +4,11 @@ use serenity::{
 };
 use std::fmt::Write;
 use tracing::trace;
-use uiua::{PrimClass, Primitive, SpanKind};
+use uiua::{
+    ast::Subscript,
+    format::{format_str, FormatConfig},
+    PrimClass, Primitive, SpanKind,
+};
 
 use crate::emoji_from_name;
 
@@ -89,13 +93,30 @@ fn with_style(s: &str, ansi: AnsiState) -> String {
     format!("{}{}\x1B[0m", ansi.ansi_str(), s)
 }
 
+fn prim_sub_style(prim: Option<Primitive>, sub: Option<Subscript>) -> AnsiState {
+    let args = prim
+        .and_then(|prim| prim.subscript_sig(sub))
+        .map(|sig| sig.args() as i32);
+    let style = prim
+        .map(|prim| style_of_prim(prim, args))
+        .unwrap_or_default();
+    style
+}
+
 /// Returns code surrounded by ANSI backticks to fake highlighting
 pub fn highlight_code(code: &str) -> String {
-    return "```Highlighter broke, down for maintenance (use wawa!show instead)```".to_string();
+    let config = FormatConfig::default();
+    let code = match format_str(code, &config) {
+        Ok(s) => s.output,
+        Err(e) => {
+            tracing::error!(?e, "Error while formatting line for pad");
+            return format!("Internal uiua error while formatting source: `{e}`");
+        }
+    };
 
-    let spans: Vec<_> = uiua::lsp::Spans::from_input(code).spans;
+    let spans: Vec<_> = uiua::lsp::Spans::from_input(&code).spans;
     let mut last_cursor: u32 = 0;
-    let mut r: String = spans.into_iter().fold(String::new(), |mut out, s| {
+    let r: String = spans.into_iter().fold(String::new(), |mut out, s| {
         let newlines_skipped = code
             .bytes()
             .skip(last_cursor as usize)
@@ -105,10 +126,14 @@ pub fn highlight_code(code: &str) -> String {
         let text = &code[s.span.start.byte_pos as usize..s.span.end.byte_pos as usize];
         last_cursor = s.span.end.byte_pos;
 
+        use SpanKind as SK;
         let fmtd = match s.value {
-            SpanKind::Primitive(p, sig) => print_prim(p, sig.map(|s| s.n()).flatten()),
-            SpanKind::String => with_style(text, AnsiState::just_color(AnsiColor::Cyan)),
-            SpanKind::Number => with_style(
+            SK::Primitive(prim, sub) => {
+                let style = prim_sub_style(Some(prim), sub);
+                with_style(&prim.to_string(), style)
+            }
+            SK::String => with_style(text, AnsiState::just_color(AnsiColor::Cyan)),
+            SK::Number => with_style(
                 text,
                 AnsiState {
                     color: AnsiColor::Red,
@@ -116,7 +141,7 @@ pub fn highlight_code(code: &str) -> String {
                     ..Default::default()
                 },
             ),
-            SpanKind::Comment => with_style(
+            SK::Comment => with_style(
                 text,
                 AnsiState {
                     color: AnsiColor::Gray,
@@ -124,7 +149,7 @@ pub fn highlight_code(code: &str) -> String {
                     ..Default::default()
                 },
             ),
-            SpanKind::OutputComment => with_style(
+            SK::OutputComment => with_style(
                 text,
                 AnsiState {
                     color: AnsiColor::White,
@@ -132,9 +157,9 @@ pub fn highlight_code(code: &str) -> String {
                     ..Default::default()
                 },
             ),
-            SpanKind::Strand => with_style(text, AnsiState::just_color(AnsiColor::White)),
-            SpanKind::Ident { .. } => with_style(text, AnsiState::default()),
-            SpanKind::Label => with_style(
+            SK::Strand => with_style(text, AnsiState::just_color(AnsiColor::White)),
+            SK::Ident { .. } => with_style(text, AnsiState::default()),
+            SK::Label => with_style(
                 text,
                 AnsiState {
                     color: AnsiColor::White,
@@ -145,32 +170,21 @@ pub fn highlight_code(code: &str) -> String {
                     ..Default::default()
                 },
             ),
-            SpanKind::Signature => with_style(text, AnsiState::default()),
-            SpanKind::Whitespace => with_style(text, AnsiState::default()),
-            SpanKind::Placeholder(..) => with_style(text, AnsiState::default()),
-            SpanKind::Delimiter => with_style(text, AnsiState::default()),
-            SpanKind::FuncDelim(..) => with_style(text, AnsiState::default()),
-            SpanKind::ImportSrc(..) => with_style(text, AnsiState::default()),
-            SpanKind::Subscript(prim, Some(x)) => {
-                // TODO: this does not highlight the attached primitive correctly
-                let subs_text: String = (x.to_string().chars())
-                    .map(|c| {
-                        if c == '-' {
-                            '₋'
-                        } else {
-                            uiua::SUBSCRIPT_DIGITS[(c as u32 as u8 - b'0') as usize]
-                        }
-                    })
-                    .collect();
-                let style = prim
-                    .map(|p| style_of_prim(p, p.sig().map(|s| s.args() as i32)))
-                    .unwrap_or_default();
-                with_style(&subs_text, style)
+            SK::Signature => with_style(text, AnsiState::default()),
+            SK::Whitespace => with_style(text, AnsiState::default()),
+            SK::Placeholder(..) => with_style(text, AnsiState::default()),
+            SK::Delimiter => with_style(text, AnsiState::default()),
+            SK::FuncDelim(..) => with_style(text, AnsiState::default()),
+            SK::ImportSrc(..) => with_style(text, AnsiState::default()),
+            SK::Subscript(prim, Some(sub)) => {
+                let sub_text = sub.to_string();
+                let style = prim_sub_style(prim, Some(sub));
+                with_style(&sub_text, style)
             }
-            SpanKind::Subscript(_, None) => with_style(text, AnsiState::default()),
-            SpanKind::Obverse(..) => with_style(text, AnsiState::default()),
-            SpanKind::MacroDelim(..) => with_style(text, AnsiState::default()),
-            SpanKind::LexOrder => with_style(text, AnsiState::default()),
+            SK::Subscript(_, None) => with_style(text, AnsiState::default()),
+            SK::Obverse(..) => with_style(text, AnsiState::just_color(AnsiColor::Yellow)),
+            SK::MacroDelim(..) => with_style(text, AnsiState::default()),
+            SK::LexOrder => with_style(text, AnsiState::default()),
         };
         let _ = write!(out, "{}{}", "\n".repeat(newlines_skipped), fmtd);
         out
@@ -178,12 +192,11 @@ pub fn highlight_code(code: &str) -> String {
 
     if r.is_empty() {
         trace!(?code, "Result of highlighting was empty");
-        r = "<Empty code>".into();
+        "<Empty code>".into()
     } else {
         trace!(?code, "Highlighted code successfully");
-        r = format!("```ansi\n{}\n```", r);
+        format!("```ansi\n{}\n```", r)
     }
-    r
 }
 
 fn style_of_prim(prim: Primitive, sig: Option<i32>) -> AnsiState {
@@ -210,6 +223,10 @@ fn style_of_prim(prim: Primitive, sig: Option<i32>) -> AnsiState {
         ..Default::default()
     };
 
+    if prim == Primitive::Identity {
+        return AnsiState::default();
+    }
+
     match prim.class() {
         PrimClass::Stack | PrimClass::Debug if prim.modifier_args().is_none() => None,
         PrimClass::Constant => Some(constant),
@@ -227,12 +244,6 @@ fn style_of_prim(prim: Primitive, sig: Option<i32>) -> AnsiState {
         }
     }
     .unwrap_or(AnsiState::default())
-}
-
-fn print_prim(prim: Primitive, sig: Option<i32>) -> String {
-    let style = style_of_prim(prim, sig);
-
-    with_style(&prim.to_string(), style)
 }
 
 pub async fn emojificate(code: &str, msg: Message, ctx: Context) -> String {

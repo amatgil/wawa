@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use crate::{backend::OutputItem, *};
+use crate::*;
 use serenity::all::{
-    Context, CreateAllowedMentions, CreateAttachment, CreateMessage, Embed, Emoji, Http, Message,
+    Context, CreateAllowedMentions, CreateAttachment, CreateMessage, Embed, Http, Message,
 };
 use std::fmt::Write;
 use std::sync::LazyLock;

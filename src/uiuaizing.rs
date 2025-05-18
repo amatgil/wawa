@@ -5,16 +5,14 @@ use crate::backend::{NativisedWebBackend, OutputItem};
 use crate::*;
 use base64::engine::general_purpose::URL_SAFE;
 use base64::Engine;
-use image::ImageFormat;
 use serenity::all::{
-    ArgumentConvert, Attachment, Context, CreateAttachment, Embed, EmbedImage, Emoji,
-    EmojiParseError, Http, Message,
+    ArgumentConvert, Attachment, Context, CreateAttachment, Emoji, EmojiParseError, Http, Message,
 };
 use serenity::futures::future::join_all;
 use std::fmt::Write;
 use std::str;
-use tracing::{error, info, trace};
-use uiua::{format::*, SysBackend, SUBSCRIPT_DIGITS};
+use tracing::{info, trace};
+use uiua::SysBackend;
 use uiua::{PrimDocFragment, PrimDocLine, Primitive, Uiua};
 
 const MIN_AUTO_IMAGE_DIM: usize = 30;
@@ -77,14 +75,6 @@ impl From<uiua::Value> for OutputItem {
 
         OutputItem::String(value.show())
     }
-}
-
-fn to_subscript(i: usize) -> String {
-    i.to_string()
-        .chars()
-        .map(|d| d.to_digit(10).unwrap())
-        .map(|x| SUBSCRIPT_DIGITS[x as usize])
-        .collect()
 }
 
 /// Returns (stdout, top-most elements of stack)
@@ -203,7 +193,7 @@ async fn print_doc_frag(frag: &PrimDocFragment, ctx: Context, msg: Message) -> S
         PrimDocFragment::Code(t) => format!("`{t}`"),
         PrimDocFragment::Emphasis(t) => format!("_{t}_"),
         PrimDocFragment::Strong(t) => format!("**{t}**"),
-        PrimDocFragment::Primitive { prim, named } => {
+        PrimDocFragment::Primitive { prim, named: _ } => {
             print_emoji(prim, ctx, msg).await
             //if *named {
             //    format!("{} `{}`", print_emoji(prim, ctx, msg), prim.name())
@@ -274,19 +264,10 @@ async fn print_emoji(c: &Primitive, ctx: Context, msg: Message) -> String {
 }
 
 pub fn format_and_get_pad_link(code: &str) -> String {
-    let config = FormatConfig::default();
-    let formatted = match format_str(code, &config) {
-        Ok(s) => s.output,
-        Err(e) => {
-            error!(?e, "Error while formatting line for pad");
-            return format!("Internal uiua error while formatting source: `{e}`");
-        }
-    };
-
     let encoded = URL_SAFE.encode(code);
     let link = format!("https://www.uiua.org/pad?src={}__{encoded}", uiua::VERSION);
 
-    let result = format!("[pad]({link}) for: {}", highlight_code(&formatted));
+    let result = format!("[pad]({link}) for: {}", highlight_code(&code));
 
     if result.len() <= MAX_MSG_LEN {
         trace!("Sending pad message normally");
@@ -442,24 +423,6 @@ pub async fn get_output(
             }
         }
         Err(err) => output = err,
-    };
-
-    // Prepare output
-    let result = if output.contains("```") {
-        info!(?output, "Output contained triple backticks, denying");
-        "Output contained triple backticks, which I disallow".to_string()
-    } else if output.is_empty() && attachments.is_empty() {
-        trace!("Result was empty");
-        "<Empty result>".to_string()
-    } else if output.is_empty() {
-        String::new()
-    } else {
-        trace!(
-            ?code,
-            ?output,
-            "Sending correctly formed result of running the code"
-        );
-        format!("```\n{output}\n```")
     };
 
     Some((output, attachments))
