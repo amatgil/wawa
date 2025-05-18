@@ -2,7 +2,6 @@
 
 use std::{
     any::Any,
-    cell::RefCell,
     collections::HashMap,
     io::Cursor,
     path::{Path, PathBuf},
@@ -10,7 +9,7 @@ use std::{
     time::Duration,
 };
 
-use uiua::{now, Handle, Report, SysBackend, EXAMPLE_TXT, EXAMPLE_UA};
+use uiua::{now, Report, SysBackend, EXAMPLE_TXT, EXAMPLE_UA};
 
 static START_TIME: OnceLock<f64> = OnceLock::new();
 
@@ -21,18 +20,6 @@ pub struct NativisedWebBackend {
     pub trace: Mutex<String>,
     pub files: Mutex<HashMap<PathBuf, Vec<u8>>>,
 }
-
-/*
-thread_local! {
-    static FILES: RefCell<HashMap<PathBuf, Vec<u8>>> = RefCell::new(
-        [
-            ("example.ua", EXAMPLE_UA),
-            ("example.txt", EXAMPLE_TXT)
-        ]
-        .map(|(path, content)| (PathBuf::from(path), content.as_bytes().to_vec()))
-        .into(),
-    );
-}*/
 
 impl NativisedWebBackend {
     pub fn current_stdout(&self) -> Vec<OutputItem> {
@@ -164,27 +151,3 @@ impl SysBackend for NativisedWebBackend {
             .collect())
     }
 }
-
-/*
-pub async fn fetch(url: &str) -> Result<String, String> {
-    let opts = RequestInit::new();
-    opts.set_method("GET");
-    opts.set_mode(RequestMode::Cors);
-    let request = Request::new_with_str_and_init(url, &opts).map_err(|e| format!("{e:?}"))?;
-    let window = web_sys::window().unwrap();
-    let resp_value = JsFuture::from(window.fetch_with_request(&request))
-        .await
-        .map_err(|e| format!("{e:?}"))?;
-    assert!(resp_value.is_instance_of::<Response>());
-    let resp: Response = resp_value.dyn_into().unwrap();
-    let text = JsFuture::from(resp.text().map_err(|e| format!("{e:?}"))?)
-        .await
-        .map(|s| s.as_string().unwrap())
-        .map_err(|e| format!("{e:?}"))?;
-    if resp.status() == 200 {
-        Ok(text)
-    } else {
-        Err(text)
-    }
-}
-*/
