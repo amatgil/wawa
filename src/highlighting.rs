@@ -4,7 +4,11 @@ use serenity::{
 };
 use std::fmt::Write;
 use tracing::trace;
-use uiua::{ast::Subscript, format::{format_str, FormatConfig}, PrimClass, Primitive, SpanKind};
+use uiua::{
+    ast::Subscript,
+    format::{format_str, FormatConfig},
+    PrimClass, Primitive, SpanKind,
+};
 
 use crate::emoji_from_name;
 
@@ -127,7 +131,7 @@ pub fn highlight_code(code: &str) -> String {
             SK::Primitive(prim, sub) => {
                 let style = prim_sub_style(Some(prim), sub);
                 with_style(&prim.to_string(), style)
-            },
+            }
             SK::String => with_style(text, AnsiState::just_color(AnsiColor::Cyan)),
             SK::Number => with_style(
                 text,
@@ -173,13 +177,12 @@ pub fn highlight_code(code: &str) -> String {
             SK::FuncDelim(..) => with_style(text, AnsiState::default()),
             SK::ImportSrc(..) => with_style(text, AnsiState::default()),
             SK::Subscript(prim, Some(sub)) => {
-                // TODO: this does not highlight the attached primitive correctly
                 let sub_text = sub.to_string();
                 let style = prim_sub_style(prim, Some(sub));
                 with_style(&sub_text, style)
             }
             SK::Subscript(_, None) => with_style(text, AnsiState::default()),
-            SK::Obverse(..) => with_style(text, AnsiState::default()),
+            SK::Obverse(..) => with_style(text, AnsiState::just_color(AnsiColor::Yellow)),
             SK::MacroDelim(..) => with_style(text, AnsiState::default()),
             SK::LexOrder => with_style(text, AnsiState::default()),
         };
