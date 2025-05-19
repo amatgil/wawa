@@ -129,7 +129,7 @@ pub fn highlight_code(code: &str) -> String {
         Ok(s) => s.output,
         Err(e) => {
             tracing::error!(?e, "Error while formatting line for pad");
-            return format!("`{e}`");
+            return format!("```\n{e}\n```");
         }
     };
 
