@@ -14,5 +14,5 @@ transfer:
     ssh $WAWA_SRV "systemctl start wawa"
 
 update:
-    cargo update
+    cargo update -p uiua
     just transfer
