@@ -41,15 +41,37 @@ enum AnsiColor {
     Reset,
 }
 
-impl AnsiState {
-    fn just_color(col: AnsiColor) -> Self {
+impl From<AnsiColor> for u8 {
+    fn from(color: AnsiColor) -> Self {
+        match color {
+            AnsiColor::Gray => 30,
+            AnsiColor::Red => 31,
+            AnsiColor::Green => 32,
+            AnsiColor::Yellow => 33,
+            AnsiColor::Blue => 34,
+            AnsiColor::Magenta => 35,
+            AnsiColor::Cyan => 36,
+            AnsiColor::White => 37,
+            AnsiColor::Default => 39,
+            AnsiColor::Reset => 0,
+        }
+    }
+}
+
+impl From<AnsiColor> for AnsiState {
+    fn from(color: AnsiColor) -> Self {
         AnsiState {
-            color: col,
+            color,
             ..Default::default()
         }
     }
-    fn ansi_str(&self) -> String {
-        let sugar: String = [
+}
+
+use std::fmt;
+
+impl fmt::Display for AnsiState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let sugar = [
             (self.bold, 1),
             (self.dim, 2),
             (self.italic, 3),
@@ -65,32 +87,29 @@ impl AnsiState {
         .join(";");
 
         if sugar.is_empty() {
-            format!("\x1B[{}m", self.color.ansi_code())
+            write!(f, "\x1B[{}m", u8::from(self.color))
         } else {
-            format!("\x1B[{};{}m", self.color.ansi_code(), sugar)
+            write!(f, "\x1B[{};{}m", u8::from(self.color), sugar)
         }
     }
 }
 
-impl AnsiColor {
-    fn ansi_code(&self) -> u8 {
-        match self {
-            Self::Gray => 30,
-            Self::Red => 31,
-            Self::Green => 32,
-            Self::Yellow => 33,
-            Self::Blue => 34,
-            Self::Magenta => 35,
-            Self::Cyan => 36,
-            Self::White => 37,
-            Self::Default => 39,
-            Self::Reset => 0,
-        }
+impl AnsiState {
+    fn style(&self, s: &str) -> String {
+        format!("{}{}\x1B[0m", self, s)
     }
-}
 
-fn with_style(s: &str, ansi: AnsiState) -> String {
-    format!("{}{}\x1B[0m", ansi.ansi_str(), s)
+    fn bold(&self) -> Self {
+        let mut new = *self;
+        new.bold = true;
+        new
+    }
+
+    fn dim(&self) -> Self {
+        let mut new = *self;
+        new.dim = true;
+        new
+    }
 }
 
 fn prim_sub_style(prim: Option<Primitive>, sub: Option<Subscript>) -> AnsiState {
@@ -110,85 +129,59 @@ pub fn highlight_code(code: &str) -> String {
         Ok(s) => s.output,
         Err(e) => {
             tracing::error!(?e, "Error while formatting line for pad");
-            return format!("Internal uiua error while formatting source: `{e}`");
+            return format!("`{e}`");
         }
     };
 
     let spans: Vec<_> = uiua::lsp::Spans::from_input(&code).spans;
-    let mut last_cursor: u32 = 0;
-    let r: String = spans.into_iter().fold(String::new(), |mut out, s| {
-        let newlines_skipped = code
-            .bytes()
-            .skip(last_cursor as usize)
-            .take(s.span.start.byte_pos as usize - last_cursor as usize)
-            .filter(|c| *c == b'\n')
-            .count();
-        let text = &code[s.span.start.byte_pos as usize..s.span.end.byte_pos as usize];
-        last_cursor = s.span.end.byte_pos;
 
-        use SpanKind as SK;
-        let fmtd = match s.value {
-            SK::Primitive(prim, sub) => {
-                let style = prim_sub_style(Some(prim), sub);
-                with_style(&prim.to_string(), style)
+    let r: String = spans
+        .into_iter()
+        .map(|s| {
+            let text = &code[s.span.start.byte_pos as usize..s.span.end.byte_pos as usize];
+
+            let whitespace = (&code[0..s.span.start.byte_pos as usize])
+                .chars()
+                .rev()
+                .take_while(|c| c.is_whitespace())
+                .collect::<String>()
+                .chars()
+                .rev()
+                .collect::<String>();
+
+            use SpanKind as SK;
+            let (code, style): (&str, _) = match s.value {
+                SK::Primitive(prim, sub) => (&prim.to_string(), prim_sub_style(Some(prim), sub)),
+                SK::String => (text, AnsiColor::Cyan.into()),
+                SK::Number => (text, AnsiState::from(AnsiColor::Red).bold()),
+                SK::Comment => (text, AnsiState::from(AnsiColor::Gray).dim()),
+                SK::OutputComment => (text, AnsiState::from(AnsiColor::White).dim()),
+                SK::Strand => (text, AnsiColor::White.into()),
+                SK::Label => (
+                    text,
+                    AnsiState {
+                        color: AnsiColor::White,
+                        bold: true,
+                        italic: true,
+                        dim: true,
+                        blink: true,
+                        ..Default::default()
+                    },
+                ),
+                SK::Subscript(prim, Some(sub)) => {
+                    (&sub.to_string(), prim_sub_style(prim, Some(sub)))
+                }
+                SK::Obverse(..) => (text, AnsiColor::Yellow.into()),
+                _ => (text, AnsiState::default()),
+            };
+
+            if code.chars().all(char::is_whitespace) {
+                "".to_string()
+            } else {
+                format!("{}{}", whitespace, style.style(code.trim_end()))
             }
-            SK::String => with_style(text, AnsiState::just_color(AnsiColor::Cyan)),
-            SK::Number => with_style(
-                text,
-                AnsiState {
-                    color: AnsiColor::Red,
-                    bold: true,
-                    ..Default::default()
-                },
-            ),
-            SK::Comment => with_style(
-                text,
-                AnsiState {
-                    color: AnsiColor::Gray,
-                    dim: true,
-                    ..Default::default()
-                },
-            ),
-            SK::OutputComment => with_style(
-                text,
-                AnsiState {
-                    color: AnsiColor::White,
-                    dim: true,
-                    ..Default::default()
-                },
-            ),
-            SK::Strand => with_style(text, AnsiState::just_color(AnsiColor::White)),
-            SK::Ident { .. } => with_style(text, AnsiState::default()),
-            SK::Label => with_style(
-                text,
-                AnsiState {
-                    color: AnsiColor::White,
-                    bold: true,
-                    italic: true,
-                    dim: true,
-                    blink: true,
-                    ..Default::default()
-                },
-            ),
-            SK::Signature => with_style(text, AnsiState::default()),
-            SK::Whitespace => with_style(text, AnsiState::default()),
-            SK::Placeholder(..) => with_style(text, AnsiState::default()),
-            SK::Delimiter => with_style(text, AnsiState::default()),
-            SK::FuncDelim(..) => with_style(text, AnsiState::default()),
-            SK::ImportSrc(..) => with_style(text, AnsiState::default()),
-            SK::Subscript(prim, Some(sub)) => {
-                let sub_text = sub.to_string();
-                let style = prim_sub_style(prim, Some(sub));
-                with_style(&sub_text, style)
-            }
-            SK::Subscript(_, None) => with_style(text, AnsiState::default()),
-            SK::Obverse(..) => with_style(text, AnsiState::just_color(AnsiColor::Yellow)),
-            SK::MacroDelim(..) => with_style(text, AnsiState::default()),
-            SK::LexOrder => with_style(text, AnsiState::default()),
-        };
-        let _ = write!(out, "{}{}", "\n".repeat(newlines_skipped), fmtd);
-        out
-    });
+        })
+        .collect();
 
     if r.is_empty() {
         trace!(?code, "Result of highlighting was empty");
@@ -200,28 +193,12 @@ pub fn highlight_code(code: &str) -> String {
 }
 
 fn style_of_prim(prim: Primitive, sig: Option<i32>) -> AnsiState {
-    let noadic = AnsiState::just_color(AnsiColor::Red);
-    let monadic = AnsiState {
-        color: AnsiColor::Green,
-        ..Default::default()
-    };
-    let monadic_mod = AnsiState {
-        color: AnsiColor::Yellow,
-        ..Default::default()
-    };
-    let dyadic_mod = AnsiState {
-        color: AnsiColor::Magenta,
-        ..Default::default()
-    };
-    let dyadic = AnsiState {
-        color: AnsiColor::Blue,
-        ..Default::default()
-    };
-    let constant = AnsiState {
-        color: AnsiColor::Red,
-        bold: true,
-        ..Default::default()
-    };
+    let noadic = AnsiColor::Red.into();
+    let monadic = AnsiColor::Green.into();
+    let monadic_mod = AnsiColor::Yellow.into();
+    let dyadic_mod = AnsiColor::Magenta.into();
+    let dyadic = AnsiColor::Blue.into();
+    let constant = AnsiState::from(AnsiColor::Red).bold();
 
     if prim == Primitive::Identity {
         return AnsiState::default();
@@ -243,7 +220,7 @@ fn style_of_prim(prim: Primitive, sig: Option<i32>) -> AnsiState {
             }
         }
     }
-    .unwrap_or(AnsiState::default())
+    .unwrap_or_default()
 }
 
 pub async fn emojificate(code: &str, msg: Message, ctx: Context) -> String {
