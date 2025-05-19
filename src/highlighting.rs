@@ -28,17 +28,34 @@ struct AnsiState {
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, Default)]
 enum AnsiColor {
-    Gray = 30, // Also black
-    Red = 31,
-    Green = 32,
-    Yellow = 33,
-    Blue = 34,
-    Magenta = 35,
-    Cyan = 36,
+    Gray, // Also black
+    Red,
+    Green,
+    Yellow,
+    Blue,
+    Magenta,
+    Cyan,
     #[default]
-    White = 37,
-    Default = 39,
-    Reset = 0,
+    White,
+    Default,
+    Reset,
+}
+
+impl From<AnsiColor> for u8 {
+    fn from(color: AnsiColor) -> Self {
+        match color {
+            AnsiColor::Gray => 30,
+            AnsiColor::Red => 31,
+            AnsiColor::Green => 32,
+            AnsiColor::Yellow => 33,
+            AnsiColor::Blue => 34,
+            AnsiColor::Magenta => 35,
+            AnsiColor::Cyan => 36,
+            AnsiColor::White => 37,
+            AnsiColor::Default => 39,
+            AnsiColor::Reset => 0,
+        }
+    }
 }
 
 impl From<AnsiColor> for AnsiState {
@@ -54,7 +71,7 @@ use std::fmt;
 
 impl fmt::Display for AnsiState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let sugar: String = [
+        let sugar = [
             (self.bold, 1),
             (self.dim, 2),
             (self.italic, 3),
@@ -70,9 +87,9 @@ impl fmt::Display for AnsiState {
         .join(";");
 
         if sugar.is_empty() {
-            write!(f, "\x1B[{}m", self.color as u8)
+            write!(f, "\x1B[{}m", u8::from(self.color))
         } else {
-            write!(f, "\x1B[{};{}m", self.color as u8, sugar)
+            write!(f, "\x1B[{};{}m", u8::from(self.color), sugar)
         }
     }
 }
