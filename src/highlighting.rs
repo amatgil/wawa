@@ -7,6 +7,7 @@ use tracing::trace;
 use uiua::{
     ast::Subscript,
     format::{format_str, FormatConfig},
+    lsp::BindingDocsKind,
     PrimClass, Primitive, SpanKind,
 };
 
@@ -17,12 +18,12 @@ use crate::emoji_from_name;
 struct AnsiState {
     color: AnsiColor,
     bold: bool,
-    italic: bool,
-    dim: bool,
-    underline: bool,
-    blink: bool,
-    reverse: bool,
-    hide: bool,
+    //italic: bool,
+    //dim: bool,
+    //underline: bool,
+    //blink: bool,
+    //reverse: bool,
+    //hide: bool,
 }
 
 #[allow(dead_code)]
@@ -67,59 +68,20 @@ impl From<AnsiColor> for AnsiState {
     }
 }
 
-use std::fmt;
-
-impl fmt::Display for AnsiState {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let sugar = [
-            (self.bold, 1),
-            (self.dim, 2),
-            (self.italic, 3),
-            (self.underline, 4),
-            (self.blink, 5),
-            (self.reverse, 7),
-            (self.hide, 8),
-        ]
-        .iter()
-        .filter(|(b, _)| *b)
-        .map(|(_, n)| n.to_string())
-        .collect::<Vec<String>>()
-        .join(";");
-
-        if sugar.is_empty() {
-            write!(f, "\x1B[{}m", u8::from(self.color))
+impl AnsiState {
+    fn style(&self, text: &str) -> String {
+        if self.bold {
+            format!("\x1B[{};1m{text}\x1B[0m", u8::from(self.color))
         } else {
-            write!(f, "\x1B[{};{}m", u8::from(self.color), sugar)
+            format!("\x1B[{}m{text}", u8::from(self.color))
         }
     }
-}
 
-impl AnsiState {
-    fn style(&self, s: &str) -> String {
-        format!("{}{}\x1B[0m", self, s)
-    }
-
-    fn bold(&self) -> Self {
-        let mut new = *self;
+    fn bold(self) -> Self {
+        let mut new = self;
         new.bold = true;
         new
     }
-
-    fn dim(&self) -> Self {
-        let mut new = *self;
-        new.dim = true;
-        new
-    }
-}
-
-fn prim_sub_style(prim: Option<Primitive>, sub: Option<Subscript>) -> AnsiState {
-    let args = prim
-        .and_then(|prim| prim.subscript_sig(sub))
-        .map(|sig| sig.args() as i32);
-    let style = prim
-        .map(|prim| style_of_prim(prim, args))
-        .unwrap_or_default();
-    style
 }
 
 /// Returns code surrounded by ANSI backticks to fake highlighting
@@ -133,14 +95,14 @@ pub fn highlight_code(code: &str) -> String {
         }
     };
 
-    let spans: Vec<_> = uiua::lsp::Spans::from_input(&code).spans;
-
-    let r: String = spans
+    let output: String = uiua::lsp::Spans::from_input(&code)
+        .spans
         .into_iter()
         .map(|s| {
-            let text = &code[s.span.start.byte_pos as usize..s.span.end.byte_pos as usize];
+            let text =
+                &code[s.span.start.byte_pos as usize..s.span.end.byte_pos as usize].trim_end();
 
-            let whitespace = (&code[0..s.span.start.byte_pos as usize])
+            let whitespace = (code[0..s.span.start.byte_pos as usize])
                 .chars()
                 .rev()
                 .take_while(|c| c.is_whitespace())
@@ -149,78 +111,138 @@ pub fn highlight_code(code: &str) -> String {
                 .rev()
                 .collect::<String>();
 
-            use SpanKind as SK;
-            let (code, style): (&str, _) = match s.value {
-                SK::Primitive(prim, sub) => (&prim.to_string(), prim_sub_style(Some(prim), sub)),
-                SK::String => (text, AnsiColor::Cyan.into()),
-                SK::Number => (text, AnsiState::from(AnsiColor::Red).bold()),
-                SK::Comment => (text, AnsiState::from(AnsiColor::Gray).dim()),
-                SK::OutputComment => (text, AnsiState::from(AnsiColor::White).dim()),
-                SK::Strand => (text, AnsiColor::White.into()),
-                SK::Label => (
-                    text,
-                    AnsiState {
-                        color: AnsiColor::White,
-                        bold: true,
-                        italic: true,
-                        dim: true,
-                        blink: true,
-                        ..Default::default()
-                    },
-                ),
-                SK::Subscript(prim, Some(sub)) => {
-                    (&sub.to_string(), prim_sub_style(prim, Some(sub)))
-                }
-                SK::Obverse(..) => (text, AnsiColor::Yellow.into()),
-                _ => (text, AnsiState::default()),
-            };
+            let style: AnsiState = Span::from(s.value).into();
 
-            if code.chars().all(char::is_whitespace) {
+            if text.is_empty() {
                 "".to_string()
             } else {
-                format!("{}{}", whitespace, style.style(code.trim_end()))
+                format!("{}{}", whitespace, style.style(text))
             }
         })
         .collect();
 
-    if r.is_empty() {
+    if output.is_empty() {
         trace!(?code, "Result of highlighting was empty");
         "<Empty code>".into()
     } else {
         trace!(?code, "Highlighted code successfully");
-        format!("```ansi\n{}\n```", r)
+        format!("```ansi\n{}\n```", output)
     }
 }
 
-fn style_of_prim(prim: Primitive, sig: Option<i32>) -> AnsiState {
-    let noadic = AnsiColor::Red.into();
-    let monadic = AnsiColor::Green.into();
-    let monadic_mod = AnsiColor::Yellow.into();
-    let dyadic_mod = AnsiColor::Magenta.into();
-    let dyadic = AnsiColor::Blue.into();
-    let constant = AnsiState::from(AnsiColor::Red).bold();
+#[derive(Default)]
+enum Span {
+    Comment,
+    String,
+    Number,
+    Label,
+    Strand,
+    Module,
 
-    if prim == Primitive::Identity {
-        return AnsiState::default();
-    }
+    Constant,
+    NoadicFun,
+    StackFun,
+    MonadicFun,
+    DyadicFun,
 
-    match prim.class() {
-        PrimClass::Stack | PrimClass::Debug if prim.modifier_args().is_none() => None,
-        PrimClass::Constant => Some(constant),
-        _ => {
-            if let Some(margs) = prim.modifier_args() {
-                Some(if margs == 1 { monadic_mod } else { dyadic_mod })
-            } else {
-                match sig.or(prim.args().map(|a| a as i32)) {
-                    Some(0) => Some(noadic),
-                    Some(1) => Some(monadic),
-                    Some(2) => Some(dyadic),
-                    _ => None,
-                }
-            }
+    MonadicMod,
+    DyadicMod,
+
+    #[default]
+    None,
+}
+
+impl From<SpanKind> for Span {
+    fn from(spankind: SpanKind) -> Self {
+        use SpanKind as SK;
+        match spankind {
+            SK::Primitive(prim, sub) => Span::from_prim_sub(Some(prim), sub),
+            SK::String => Span::String,
+            SK::Number => Span::Number,
+            SK::Comment | SK::OutputComment => Span::Comment,
+            SK::Strand => Span::Strand,
+            SK::Label => Span::Label,
+            SK::Subscript(prim, Some(sub)) => Span::from_prim_sub(prim, Some(sub)),
+            SK::Obverse(..) => Span::MonadicMod,
+            SK::Ident {
+                docs: Some(docs), ..
+            } => match docs.kind {
+                BindingDocsKind::Constant(_) => Span::Constant,
+                BindingDocsKind::Function { sig, .. } => match sig.args() {
+                    0 => Span::NoadicFun,
+                    1 => Span::MonadicFun,
+                    2 => Span::DyadicFun,
+                    _ => Span::default(),
+                },
+                BindingDocsKind::Modifier(args) => match args {
+                    1 => Span::MonadicMod,
+                    2 => Span::DyadicMod,
+                    _ => Span::default(),
+                },
+                BindingDocsKind::Module { .. } => Span::Module,
+                BindingDocsKind::Error => Span::default(),
+            },
+            _ => Span::default(),
         }
     }
-    .unwrap_or_default()
+}
+
+impl From<Span> for AnsiState {
+    fn from(span: Span) -> Self {
+        match span {
+            Span::Comment => AnsiColor::Gray.into(),
+            Span::String => AnsiColor::Cyan.into(),
+            Span::Number => AnsiState::from(AnsiColor::Red).bold(),
+            Span::Label => AnsiState::from(AnsiColor::White).bold(),
+            Span::Strand => AnsiColor::Gray.into(),
+            Span::Module => AnsiState::from(AnsiColor::White).bold(),
+
+            Span::Constant => AnsiColor::White.into(),
+            Span::NoadicFun => AnsiColor::Red.into(),
+            Span::StackFun => AnsiColor::White.into(),
+            Span::MonadicFun => AnsiColor::Green.into(),
+            Span::DyadicFun => AnsiColor::Blue.into(),
+            Span::MonadicMod => AnsiColor::Yellow.into(),
+            Span::DyadicMod => AnsiColor::Magenta.into(),
+
+            Span::None => AnsiState::default(),
+        }
+    }
+}
+
+impl Span {
+    fn from_prim(prim: Primitive, args: Option<usize>) -> Self {
+        if let Some(args) = prim.modifier_args() {
+            return if args == 1 {
+                Self::MonadicMod
+            } else {
+                Self::DyadicMod
+            };
+        }
+
+        if matches!(prim.class(), PrimClass::Stack | PrimClass::Debug)
+            || prim == Primitive::Identity
+        {
+            return Self::StackFun;
+        }
+
+        args.or(prim.sig().map(|sig| sig.args()))
+            .map(|args| match args {
+                0 => Self::NoadicFun,
+                1 => Self::MonadicFun,
+                2 => Self::DyadicFun,
+                _ => Self::None,
+            })
+            .unwrap_or_default()
+    }
+
+    fn from_prim_sub(prim: Option<Primitive>, sub: Option<Subscript>) -> Self {
+        let args = prim
+            .and_then(|prim| prim.subscript_sig(sub))
+            .map(|sig| sig.args());
+        prim.map(|prim| Self::from_prim(prim, args))
+            .unwrap_or_default()
+    }
 }
 
 pub async fn emojificate(code: &str, msg: Message, ctx: Context) -> String {
