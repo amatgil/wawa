@@ -174,7 +174,7 @@ pub async fn get_docs(f: &str, ctx: Context, msg: Message) -> String {
                 docs.doc()
                     .lines
                     .iter()
-                    .take(5)
+                    .take(10)
                     .map(|docs| async { print_docs(docs, ctx.clone(), msg.clone()).await }),
             )
             .await
@@ -235,8 +235,7 @@ pub async fn emoji_from_name(
     ctx: Context,
     msg: Message,
 ) -> Result<Emoji, EmojiParseError> {
-    dbg!(name);
-    dbg!(Emoji::convert(ctx.clone(), msg.guild_id, Some(msg.channel_id), name).await)
+    Emoji::convert(ctx.clone(), msg.guild_id, Some(msg.channel_id), name).await
 }
 
 async fn print_emoji(c: &Primitive, ctx: Context, msg: Message) -> String {

@@ -205,7 +205,10 @@ pub async fn handle_docs(msg: Message, ctx: Context, code: &str) {
         send_message(
             msg,
             &ctx.http,
-            &format!("Functions don't have more than {} chars", *MAX_FN_LEN),
+            &format!(
+                "There's no function with more than {} chars, silly",
+                *MAX_FN_LEN
+            ),
         )
         .await
     } else {
