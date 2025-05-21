@@ -1,8 +1,4 @@
-use serenity::{
-    all::{Context, Message},
-    futures::{stream, StreamExt},
-};
-use std::fmt::Write;
+use serenity::all::{Context, Message};
 use tracing::trace;
 use uiua::{
     ast::Subscript,
@@ -11,7 +7,7 @@ use uiua::{
     PrimClass, Primitive, SpanKind,
 };
 
-use crate::emoji_from_name;
+use crate::find_emoji;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, Default)]
@@ -246,74 +242,105 @@ impl Span {
 }
 
 pub async fn emojificate(code: &str, msg: Message, ctx: Context) -> String {
-    let spans: Vec<_> = uiua::lsp::Spans::from_input(code).spans;
+    let emojis = crate::get_emojis(msg.guild_id, &ctx.http).await;
 
-    let mut r: String = stream::iter(spans.into_iter())
-        .fold((String::new(), 0), |(mut out, mut last_cursor), s| {
-            let ctxclone = ctx.clone();
-            let msgclone = msg.clone();
-            {
-                async move {
-                    let newlines_skipped = code
-                        .bytes()
-                        .skip(last_cursor as usize)
-                        .take(s.span.start.byte_pos as usize - last_cursor as usize)
-                        .filter(|c| *c == b'\n')
-                        .count();
-                    let text = &code[s.span.start.byte_pos as usize..s.span.end.byte_pos as usize];
-                    last_cursor = s.span.end.byte_pos;
+    let config = FormatConfig::default();
+    let code = match format_str(code, &config) {
+        Ok(s) => s.output,
+        Err(e) => {
+            tracing::error!(?e, "Error while formatting line for emojification");
+            return format!("```\n{e}\n```");
+        }
+    };
 
-                    let fmtd = match s.value {
-                        SpanKind::Primitive(p, _) => emoji_from_name(p.name(), ctxclone, msgclone)
-                            .await
-                            .map(|e| format!("<:{}:{}>", e.name, e.id))
-                            .unwrap_or_else(|_| format!("`{}`", p.name())),
-                        SpanKind::String => format!("`{text}`"),
-                        SpanKind::Number => format!("`{text}`"),
-                        SpanKind::Comment => format!("`{text}`"),
-                        SpanKind::OutputComment => format!("`{text}`"),
-                        SpanKind::Strand => format!("`{text}`"),
-                        SpanKind::Ident { .. } => {
-                            if text == "Lena" {
-                                emoji_from_name("lena", ctxclone, msgclone)
-                                    .await
-                                    .map(|e| format!("<:{}:{}>", e.name, e.id))
-                                    .unwrap_or_else(|_| "<lena emoji should go here>".to_string())
-                            } else {
-                                format!("`{text}`")
-                            }
+    let output: String = uiua::lsp::Spans::from_input(&code)
+        .spans
+        .into_iter()
+        .map(|s| {
+            let text =
+                &code[s.span.start.byte_pos as usize..s.span.end.byte_pos as usize].trim_end();
+            let lower = text.to_lowercase();
+
+            match s.value {
+                SpanKind::Primitive(prim, ..) => find_emoji(&emojis, prim.name()),
+                SpanKind::Obverse(..) => find_emoji(&emojis, "obverse"),
+                SpanKind::Subscript(.., Some(_)) => text
+                    .chars()
+                    .map(|c| match c {
+                        '₋' => find_emoji(&emojis, "subneg"),
+                        '₀'..='₉' => {
+                            find_emoji(&emojis, &format!("sub{}", c as usize - '₀' as usize))
                         }
-                        SpanKind::Label => format!("`{text}`"),
-                        SpanKind::Signature => format!("`{text}`"),
-                        SpanKind::Whitespace => format!("{text}"), // no backticks for space
-                        SpanKind::Placeholder(..) => format!("`{text}`"),
-                        SpanKind::Delimiter => format!("`{text}`"),
-                        SpanKind::FuncDelim(..) => format!("`{text}`"),
-                        SpanKind::ImportSrc(..) => format!("`{text}`"),
-                        SpanKind::Subscript(_, Some(x)) => {
-                            let subs_text: String = (x.to_string().chars())
-                                .map(|c| uiua::SUBSCRIPT_DIGITS[(c as u32 as u8 - b'0') as usize])
-                                .collect();
-                            format!("`{subs_text}`")
-                        }
-                        SpanKind::Subscript(_, None) => format!("`{text}`"),
-                        SpanKind::Obverse(..) => format!("`{text}`"),
-                        SpanKind::MacroDelim(..) => format!("`{text}`"),
-                        SpanKind::LexOrder => format!("`{text}`"),
-                    };
-                    let _ = write!(out, "{}{} ", "\n".repeat(newlines_skipped), fmtd);
-                    (out, last_cursor)
+                        '⌞' => find_emoji(&emojis, "subleft"),
+                        '⌟' => find_emoji(&emojis, "subright"),
+                        _ => None,
+                    })
+                    .collect(),
+                SpanKind::Number => text
+                    .chars()
+                    .map(|c| match c {
+                        '¯' => find_emoji(&emojis, "negate"),
+                        '0'..='9' => Some(format!(
+                            ":{}:",
+                            [
+                                "zero", "one", "two", "three", "four", "five", "six", "seven",
+                                "eight", "nine",
+                            ][c as usize - '0' as usize]
+                        )),
+                        'η' => find_emoji(&emojis, "eta"),
+                        'π' => find_emoji(&emojis, "pi"),
+                        'τ' => find_emoji(&emojis, "tau"),
+                        '∞' => find_emoji(&emojis, "infinity"),
+                        '.' => find_emoji(&emojis, "duplicate"),
+                        '/' => find_emoji(&emojis, "reduce"),
+                        _ => None,
+                    })
+                    .collect(),
+                SpanKind::Ident { .. } if find_emoji(&emojis, &lower).is_some() => {
+                    find_emoji(&emojis, &lower)
                 }
+                SpanKind::Ident { .. }
+                    if ["gay", "pride", "ally", "rainbow"].contains(&lower.as_str()) =>
+                {
+                    Some(":rainbow_flag:".to_string())
+                }
+                SpanKind::Ident { .. } if "transgender".starts_with(&lower) && lower.len() > 1 => {
+                    Some(":transgender_flag:".to_string())
+                }
+                SpanKind::Ident { .. } if lower == "logo" => find_emoji(&emojis, "uiua"),
+                SpanKind::Ident { .. } if lower == "cats" => {
+                    match (find_emoji(&emojis, "murphy"), find_emoji(&emojis, "louie")) {
+                        (Some(murphy), Some(louie)) => Some(format!("{murphy}{louie}")),
+                        _ => None,
+                    }
+                }
+                SpanKind::Ident { .. } => text
+                    .to_lowercase()
+                    .chars()
+                    .map(|c| match c {
+                        c if c.is_ascii_alphabetic() => Some(format!(":regional_indicator_{c}:")),
+                        '!' => Some(":exclamation:".to_string()),
+                        '‼' => Some(":exclamation:".repeat(2)),
+                        '₀'..='₉' => {
+                            find_emoji(&emojis, &format!("sub{}", c as usize - '₀' as usize))
+                        }
+                        _ => None,
+                    })
+                    .collect(),
+                SpanKind::Delimiter => find_emoji(&emojis, "binding"),
+                SpanKind::Whitespace => Some(text.to_string()),
+                _ => None,
             }
+            .unwrap_or_else(|| format!("`{}`", text.trim()))
         })
-        .await
-        .0;
+        .collect();
+    let output = output.replace("``", "` `");
 
-    if r.is_empty() {
+    if output.is_empty() {
         trace!(?code, "Result of highlighting was empty");
-        r = "<Empty code>".into();
+        "`<Empty code>`".into()
     } else {
         trace!(?code, "Highlighted code successfully");
+        output
     }
-    r
 }
