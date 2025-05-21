@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use crate::*;
 use serenity::all::{
-    Context, CreateAllowedMentions, CreateAttachment, CreateMessage, Embed, Http, Message,
+    Context, CreateAllowedMentions, CreateAttachment, CreateMessage, Embed, Emoji, GuildId, Http,
+    Message,
 };
 use std::fmt::Write;
 use std::sync::LazyLock;
@@ -55,6 +56,21 @@ static MAX_FN_LEN: LazyLock<usize> = LazyLock::new(|| {
         .max()
         .unwrap() // There _are_ primitives
 });
+
+pub async fn get_emojis(guild_id: Option<GuildId>, http: &Arc<Http>) -> Vec<Emoji> {
+    match guild_id {
+        Some(id) => id.emojis(&http).await.ok(),
+        None => None,
+    }
+    .unwrap_or_default()
+}
+
+pub fn find_emoji(emojis: &[Emoji], name: &str) -> Option<String> {
+    emojis
+        .iter()
+        .find(|emoji| emoji.name.replace("~1", "") == name.replace(" ", ""))
+        .map(|emoji| emoji.to_string())
+}
 
 // HANDLERS
 #[instrument(skip_all)]

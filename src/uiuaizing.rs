@@ -5,10 +5,7 @@ use crate::backend::{NativisedWebBackend, OutputItem};
 use crate::*;
 use base64::engine::general_purpose::URL_SAFE;
 use base64::Engine;
-use serenity::all::{
-    ArgumentConvert, Attachment, Context, CreateAttachment, Emoji, EmojiParseError, Http, Message,
-};
-use serenity::futures::future::join_all;
+use serenity::all::{Attachment, Context, CreateAttachment, Emoji, Http, Message};
 use std::fmt::Write;
 use std::str;
 use tracing::{info, trace};
@@ -156,61 +153,58 @@ pub async fn run_uiua(
 }
 
 pub async fn get_docs(f: &str, ctx: Context, msg: Message) -> String {
+    let emojis = get_emojis(msg.guild_id, &ctx.http).await;
+
     match Primitive::from_format_name(f)
         .or_else(|| Primitive::from_glyph(f.chars().next().unwrap_or_default()))
         .or_else(|| Primitive::from_name(f))
     {
         Some(docs) => {
-            let short = join_all(docs.doc().short.iter().map(|frag| async {
-                format!(
-                    "## {}",
-                    print_doc_frag(frag, ctx.clone(), msg.clone()).await
-                )
-            }))
-            .await
-            .join("\n");
+            let short = docs
+                .doc()
+                .short
+                .iter()
+                .map(|frag| format!("## {}", print_doc_frag(&emojis, frag)))
+                .collect::<Vec<_>>()
+                .join("\n");
 
-            let long = join_all(
-                docs.doc()
-                    .lines
-                    .iter()
-                    .take(10)
-                    .map(|docs| async { print_docs(docs, ctx.clone(), msg.clone()).await }),
-            )
-            .await
-            .join("\n");
-            format!("\n{short}\n\n\n{long}\n\n([More information](https://uiua.org/docs/{}))", docs.name())
-        }
+            let long = docs
+                .doc()
+                .lines
+                .iter()
+                .take(10)
+                .map(|docs| print_docs(&emojis, docs))
+                .collect::<Vec<_>>()
+                .join("\n");
+
+            let name = docs.name();
+            let name = name.split_once(" ").map(|pair| pair.0).unwrap_or(name);
+            format!("\n{short}\n\n\n{long}\n\n([More information](https://uiua.org/docs/{name}))")
+        } 
         None => format!("No docs found for '{f}', did you spell it right? (For full docs, see [full docs](https://www.uiua.org/docs))"),
     }
 }
 
-async fn print_doc_frag(frag: &PrimDocFragment, ctx: Context, msg: Message) -> String {
+fn print_doc_frag(emojis: &[Emoji], frag: &PrimDocFragment) -> String {
     match frag {
         PrimDocFragment::Text(t) => t.clone(),
         PrimDocFragment::Code(t) => format!("`{t}`"),
         PrimDocFragment::Emphasis(t) => format!("_{t}_"),
         PrimDocFragment::Strong(t) => format!("**{t}**"),
-        PrimDocFragment::Primitive { prim, named: _ } => {
-            print_emoji(prim, ctx, msg).await
-            //if *named {
-            //    format!("{} `{}`", print_emoji(prim, ctx, msg), prim.name())
-            //} else {
-            //    print_emoji(prim)
-            //}
+        PrimDocFragment::Primitive { prim, .. } => {
+            find_emoji(emojis, prim.name()).unwrap_or_else(|| format!("`{prim}`"))
         }
         PrimDocFragment::Link { text, url } => format!("[{text}]({url})"),
     }
 }
 
-async fn print_docs(line: &PrimDocLine, ctx: Context, msg: Message) -> String {
+fn print_docs(emojis: &[Emoji], line: &PrimDocLine) -> String {
     match line {
-        PrimDocLine::Text(vs) => join_all(
-            vs.iter()
-                .map(|frag| async { print_doc_frag(frag, ctx.clone(), msg.clone()).await }),
-        )
-        .await
-        .join(" "),
+        PrimDocLine::Text(vs) => vs
+            .iter()
+            .map(|frag| print_doc_frag(emojis, frag))
+            .collect::<Vec<_>>()
+            .join(" "),
         PrimDocLine::Example(e) => {
             let out = match e.output().as_ref().map(|vs| vs.join(";")) {
                 Ok(l) => l,
@@ -226,36 +220,6 @@ async fn print_docs(line: &PrimDocLine, ctx: Context, msg: Message) -> String {
             );
 
             highlight_code(&text).to_string()
-        }
-    }
-}
-
-pub async fn emoji_from_name(
-    name: &str,
-    ctx: Context,
-    msg: Message,
-) -> Result<Emoji, EmojiParseError> {
-    Emoji::convert(ctx.clone(), msg.guild_id, Some(msg.channel_id), name).await
-}
-
-async fn print_emoji(c: &Primitive, ctx: Context, msg: Message) -> String {
-    if c.is_experimental() {
-        c.names()
-            .glyph
-            .map(|g| g.to_string())
-            .unwrap_or(c.name().to_string())
-    } else {
-        let name = c.name().split(' ').collect::<String>();
-        let emoji = emoji_from_name(&name, ctx, msg).await;
-        match emoji {
-            Ok(e) => {
-                trace!(name, "Succesfully got emoji");
-                format!("<:{}:{}>", name, e.id)
-            }
-            Err(e) => {
-                trace!(error = ?e, "Error getting emoji");
-                name // it's a function with no glyph, like `&p`
-            }
         }
     }
 }
