@@ -261,7 +261,7 @@ pub async fn emojificate(code: &str, msg: Message, ctx: Context) -> String {
                 &code[s.span.start.byte_pos as usize..s.span.end.byte_pos as usize].trim_end();
             let lower = text.to_lowercase();
 
-            match s.value {
+            let output = match s.value {
                 SpanKind::Primitive(prim, ..) => find_emoji(&emojis, prim.name()),
                 SpanKind::Obverse(..) => find_emoji(&emojis, "obverse"),
                 SpanKind::Subscript(.., Some(_)) => text
@@ -331,7 +331,13 @@ pub async fn emojificate(code: &str, msg: Message, ctx: Context) -> String {
                 SpanKind::Whitespace => Some(text.to_string()),
                 _ => None,
             }
-            .unwrap_or_else(|| format!("`{}`", text.trim()))
+            .unwrap_or_else(|| format!("`{}`", text.trim()));
+
+            if code[0..s.span.start.byte_pos as usize].ends_with("\n") {
+                format!("\n{output}")
+            } else {
+                output
+            }
         })
         .collect();
     let output = output.replace("``", "` `");
