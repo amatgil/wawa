@@ -183,7 +183,7 @@ impl EventHandler for Handler {
                         }
                     };
                     send_message(msg, &ctx.http,
-                                 "Wawa seems to have been shutdown during the computation you summoned! It's likely it triggered the Out-Of-Memory-Killer; please try to not send messages that use up that much memory").await;
+                                 "Wawa seems to have been shutdown during the computation you summoned! It's likely it triggered the Out-Of-Memory-Killer; please try to not send messages that use up that much memory.").await;
                     info!(?path, "responded with OOM to path");
                     _ = fs::remove_file(path);
                 }
