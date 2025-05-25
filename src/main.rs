@@ -203,6 +203,11 @@ impl EventHandler for Handler {
             Some(cm) => cm,
             None => {
                 trace!("Wawa message seems to be in reply to an unreachable message"); // Probs deleted
+                                                                                       // We will accept it regardless
+                match reacted_message.delete(ctx.http).await {
+                    Ok(()) => trace!("Message deleted (command does not exist anymore, so we're accepting deletion command)"),
+                    Err(error) => trace!(?error, "Error deleting message"),
+                }
                 return;
             }
         };
