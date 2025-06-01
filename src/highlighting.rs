@@ -1,10 +1,9 @@
 use serenity::all::{Context, Message};
 use tracing::trace;
 use uiua::{
-    ast::Subscript,
     format::{format_str, FormatConfig},
     lsp::BindingDocsKind,
-    PrimClass, Primitive, SpanKind,
+    PrimClass, Primitive, SpanKind, Subscript,
 };
 
 use crate::find_emoji;

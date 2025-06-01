@@ -9,7 +9,7 @@ use serenity::all::{Attachment, Context, CreateAttachment, Emoji, Http, Message}
 use std::fmt::Write;
 use std::str;
 use tracing::{info, trace};
-use uiua::SysBackend;
+use uiua::{PrimDoc, SysBackend};
 use uiua::{PrimDocFragment, PrimDocLine, Primitive, Uiua};
 
 const MIN_AUTO_IMAGE_DIM: usize = 30;
@@ -59,7 +59,7 @@ impl From<uiua::Value> for OutputItem {
         }
         // Gif
         if let Ok(gif) = value_to_gif_bytes(&value, 16.0) {
-            match value.shape.dims() {
+            match &*value.shape {
                 &[f, h, w] | &[f, h, w, _]
                     if h >= MIN_AUTO_IMAGE_DIM && w >= MIN_AUTO_IMAGE_DIM && f >= 5 =>
                 {
@@ -160,20 +160,18 @@ pub async fn get_docs(f: &str, ctx: Context, msg: Message) -> String {
         .or_else(|| Primitive::from_name(f))
     {
         Some(docs) => {
-            let short = docs
-                .doc()
+            let short = PrimDoc::from(docs)
                 .short
                 .iter()
                 .map(|frag| format!("## {}", print_doc_frag(&emojis, frag)))
                 .collect::<Vec<_>>()
                 .join("\n");
 
-            let long = docs
-                .doc()
+            let long = PrimDoc::from(docs)
                 .lines
-                .iter()
+                .into_iter()
                 .take(10)
-                .map(|docs| print_docs(&emojis, docs))
+                .map(|docs| print_docs(&emojis, &docs))
                 .collect::<Vec<_>>()
                 .join("\n");
 
