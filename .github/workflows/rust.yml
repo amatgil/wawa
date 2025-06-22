@@ -15,8 +15,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     environment: Deployment env
-    outputs:
-        should-deploy: ${{ steps.should-deploy-step.outputs.SHOULDDEPLOY }}
     steps:
     - uses: actions/checkout@v4
     
