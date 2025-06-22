@@ -6,8 +6,6 @@ on:
   pull_request:
     branches: [ "master" ]
   workflow_dispatch:
-  schedule:
-  - cron: "0 10 * * *" # At 10:00 UTC every day
 
 env:
   CARGO_TERM_COLOR: always
@@ -23,17 +21,10 @@ jobs:
     - uses: actions/checkout@v4
     
     - name: Get new uiua
-      run: cargo update -p uiua 2> updatelog
-    - name: Record SHOULDDEPLOY envvar
-      id: should-deploy-step
-      run: |
-        grep 'Updating uiua' updatelog && echo "SHOULDDEPLOY=yes" >> $GITHUB_OUTPUT || echo "SHOULDDEPLOY=no" >> $GITHUB_OUTPUT
-        cat Cargo.lock | grep -3 uiua 
+      run: cargo update -p uiua
     - name: Build wawa
-      if: ${{ steps.should-deploy-step.outputs.SHOULDDEPLOY == 'yes' }}
       run: cargo build --verbose --release
     - name: Upload artifact for sending
-      if: ${{ steps.should-deploy-step.outputs.SHOULDDEPLOY == 'yes' }}
       uses: actions/upload-artifact@v4
       with:
         name: wawa-binary-artifact
@@ -45,7 +36,6 @@ jobs:
     runs-on: ubuntu-latest
     environment: Deployment env
 
-    if: ${{ needs.build.outputs.should-deploy == 'yes' }}
     steps:
     - uses: actions/download-artifact@v4
       with:
