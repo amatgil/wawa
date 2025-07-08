@@ -20,7 +20,7 @@ You can delete any wawa message (that you triggered!) by reacting with :x:.
 
 If you add images as attachments to the message, they'll be placed on the stack at the start of execution. They will also exist in the in-memory filesystem (named `"imgN"`).
 
-If the command message is in reply to another message, the referenced message's contents will be placed on the stack as a multi-line string. This will be on top of the attachment images, if they exist.
+If the command message is in reply to another message, the referenced message's contents will be placed on the stack as a multi-line string. This will be below the attachment images, if they exist.
 
 
 Available commands:
