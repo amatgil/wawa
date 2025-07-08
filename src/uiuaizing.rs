@@ -78,7 +78,10 @@ impl From<uiua::Value> for OutputItem {
 pub async fn run_uiua(
     code: &str,
     attachments: &[Attachment],
-    text_of_reply: Option<&str>
+    // The text of the message that this command is in reply to
+    text_of_refd: Option<&str>,
+    // Attachments of the message that this command is in reply to
+    attachments_of_refd: Option<&[Attachment]>,
 ) -> Result<(Vec<OutputItem>, Vec<OutputItem>), String> {
     const MAX_ATTACHMENT_IMAGE_PIXEL_COUNT: u32 = 2048 * 2048;
 
@@ -90,38 +93,47 @@ pub async fn run_uiua(
     let backend = NativisedWebBackend::default();
     let mut full_code = String::new();
 
-    if let Some(text) = text_of_reply {
+    let push_attachments = async |attchs: &[Attachment], acc: &mut String, i: &mut usize| {
+        for attachment in attchs.iter().rev() {
+            let url = &attachment.url;
+            match (attachment.width, attachment.height) {
+                (Some(w), Some(h)) if w * h > MAX_ATTACHMENT_IMAGE_PIXEL_COUNT => {
+                    return Err(format!(
+                        "Attachment {i} has (width, height) := ({w}, {h}), which is too many pixels (maximum is {MAX_ATTACHMENT_IMAGE_PIXEL_COUNT})"
+                    ))
+                }
+                (None, _) | (_, None) => return Err(format!("Attachment {i} did not come with a width or height, and I've only implemented images for now")),
+                _ => {}
+            }
+
+            let data = reqwest::get(url)
+                .await
+                .map_err(|_| format!("could not get image associated with attachment number {i}"))?;
+
+            backend
+                .file_write_all(
+                    format!("img{}", i).as_ref(),
+                    &data.bytes().await.map_err(|_| {
+                        format!("could not interpret bytes of image of attachment number {i}")
+                    })?,
+                )
+                .unwrap();
+            acc.push_str(&format!("popunimg&frab\"img{i}\"\n"));
+            *i += 1;
+        }
+        Ok(())
+    };
+
+    if let Some(text) = text_of_refd {
         let text = text.lines().map(|l| format!("$ {l} \n")).collect::<String>();
         full_code.push_str("\n");
         full_code.push_str(&text);
         full_code.push_str("\n");
     }
-    for (i, attachment) in attachments.iter().rev().enumerate() {
-        let i = attachments.len() - i - 1;
-        let url = &attachment.url;
-        match (attachment.width, attachment.height) {
-            (Some(w), Some(h)) if w * h > MAX_ATTACHMENT_IMAGE_PIXEL_COUNT => {
-                return Err(format!(
-                    "Attachment {i} has (width, height) := ({w}, {h}), which is too many pixels (maximum is {MAX_ATTACHMENT_IMAGE_PIXEL_COUNT})"
-                ))
-            }
-            (None, _) | (_, None) => return Err(format!("Attachment {i} did not come with a width or height, and I've only implemented images for now")),
-            _ => {}
-        }
-
-        let data = reqwest::get(url)
-            .await
-            .map_err(|_| format!("could not get image associated with attachment number {i}"))?;
-
-        backend
-            .file_write_all(
-                format!("img{}", i).as_ref(),
-                &data.bytes().await.map_err(|_| {
-                    format!("could not interpret bytes of image of attachment number {i}")
-                })?,
-            )
-            .unwrap();
-        full_code.push_str(&format!("popunimg&frab\"img{i}\"\n"));
+    let mut i = 0;
+    push_attachments(attachments, &mut full_code, &mut i).await?;
+    if let Some(a_refd) = attachments_of_refd {
+        push_attachments(a_refd, &mut full_code, &mut i).await?;
     }
 
     full_code.push_str(&format!("{code}\n"));
@@ -261,8 +273,9 @@ pub async fn get_output(
         .await;
         return None;
     }
-    let text_of_reply = msg.referenced_message.map(|refd| refd.content);
-    let result = run_uiua(strip_triple_ticks(code.trim()), &msg.attachments, text_of_reply.as_deref());
+    let text_of_refd = msg.referenced_message.as_ref().map(|refd| refd.content.clone());
+    let attachments_of_refd = msg.referenced_message.map(|refd| refd.attachments);
+    let result = run_uiua(strip_triple_ticks(code.trim()), &msg.attachments, text_of_refd.as_deref(), attachments_of_refd.as_deref());
 
     let mut output = String::new();
     let mut attachments = Vec::new();
