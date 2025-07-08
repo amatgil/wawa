@@ -78,6 +78,7 @@ impl From<uiua::Value> for OutputItem {
 pub async fn run_uiua(
     code: &str,
     attachments: &[Attachment],
+    text_of_reply: Option<&str>
 ) -> Result<(Vec<OutputItem>, Vec<OutputItem>), String> {
     const MAX_ATTACHMENT_IMAGE_PIXEL_COUNT: u32 = 2048 * 2048;
 
@@ -89,6 +90,13 @@ pub async fn run_uiua(
     let backend = NativisedWebBackend::default();
     let mut full_code = String::new();
 
+    dbg!(&text_of_reply);
+    if let Some(text) = text_of_reply {
+        let text = text.lines().map(|l| format!("$ {l} \n")).collect::<String>();
+        full_code.push_str("\n");
+        full_code.push_str(&text);
+        full_code.push_str("\n");
+    }
     for (i, attachment) in attachments.iter().rev().enumerate() {
         let i = attachments.len() - i - 1;
         let url = &attachment.url;
@@ -254,7 +262,8 @@ pub async fn get_output(
         .await;
         return None;
     }
-    let result = run_uiua(strip_triple_ticks(code.trim()), &msg.attachments);
+    let text_of_reply = msg.referenced_message.map(|refd| refd.content);
+    let result = run_uiua(strip_triple_ticks(code.trim()), &msg.attachments, text_of_reply.as_deref());
 
     let mut output = String::new();
     let mut attachments = Vec::new();
