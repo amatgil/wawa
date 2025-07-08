@@ -90,7 +90,6 @@ pub async fn run_uiua(
     let backend = NativisedWebBackend::default();
     let mut full_code = String::new();
 
-    dbg!(&text_of_reply);
     if let Some(text) = text_of_reply {
         let text = text.lines().map(|l| format!("$ {l} \n")).collect::<String>();
         full_code.push_str("\n");
