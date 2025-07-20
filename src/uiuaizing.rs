@@ -186,17 +186,23 @@ pub async fn get_docs(f: &str, ctx: Context, msg: Message) -> String {
                 .collect::<Vec<_>>()
                 .join("\n");
 
+            let name = docs.name();
+            let name = name.split_once(" ").map(|pair| pair.0).unwrap_or(name);
+            let final_result = |long: &str| format!("\n{short}\n\n\n{long}\n\n([More information](https://uiua.org/docs/{name}))");
+
             let long = PrimDoc::from(docs)
                 .lines
                 .into_iter()
-                .take(10)
-                .map(|docs| print_docs(&emojis, &docs))
-                .collect::<Vec<_>>()
-                .join("\n");
+                .fold(String::new(), |mut acc, docs| {
+                    let new = print_docs(&emojis, &docs);
+                    if final_result(&acc).len() + new.len() + 1 < MAX_MSG_LEN { 
+                        acc.push('\n');
+                        acc.push_str(&new); 
+                    }
+                    acc
+                });
 
-            let name = docs.name();
-            let name = name.split_once(" ").map(|pair| pair.0).unwrap_or(name);
-            format!("\n{short}\n\n\n{long}\n\n([More information](https://uiua.org/docs/{name}))")
+            final_result(&long)
         } 
         None => format!("No docs found for '{f}', did you spell it right? (For full docs, see [full docs](https://www.uiua.org/docs))"),
     }
