@@ -233,7 +233,7 @@ impl Span {
 
     fn from_prim_sub(prim: Option<Primitive>, sub: Option<Subscript>) -> Self {
         let args = prim
-            .and_then(|prim| prim.subscript_sig(sub))
+            .and_then(|prim| prim.subscript_sig(sub.as_ref()))
             .map(|sig| sig.args());
         prim.map(|prim| Self::from_prim(prim, args))
             .unwrap_or_default()
