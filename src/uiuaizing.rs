@@ -113,7 +113,7 @@ pub async fn run_uiua(
 
             backend
                 .file_write_all(
-                    format!("img{i}{suffix}").as_ref(),
+                    format!("img{suffix}{i}").as_ref(),
                     &data.bytes().await.map_err(|_| {
                         format!("could not interpret bytes of image of attachment number {i}, suffix '{suffix}'")
                     })?,
@@ -125,9 +125,9 @@ pub async fn run_uiua(
 
     if let Some(text) = text_of_refd {
         // This is so scuffed, there's definitely a proper way to make a proper binding from Rust
-        let text = text.lines().map(|l| format!("$ {l} \n")).collect::<String>();
+        let text_split = text.lines().map(|l| format!("$ {l} \n")).collect::<String>();
         full_code.push_str("\n");
-        full_code.push_str(&text);
+        full_code.push_str(&text_split);
         full_code.push_str("\n");
         full_code.push_str("S =");
         backend.file_write_all(&Path::new("S"), &text.as_bytes())?;
