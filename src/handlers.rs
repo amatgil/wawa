@@ -16,13 +16,13 @@ Your friendly neighbourhood uiua bot!
 
 Run with either `w!` or `wawa!`
 
-You can delete any wawa message (that you triggered!) by reacting with :x:.
+You can delete any wawa message (that you triggered, or whose original message was deleted) by reacting with :x:.
 
-If you add images as attachments to the message, they'll be placed on the stack at the start of execution. They will also exist in the in-memory filesystem (named `"imgN"`).
-
-If the command message is in reply to another message, the referenced message's contents will be placed on the stack as a multi-line string. This will be below the attachment images, if they exist. If it contains attachments too, those will be between the string.
-(That is, the stack will be: `[Top] <ref'd string> <ref'd attachments> <your attachments>`)
-
+All attachments that you include in your message or that exist in the message you're replying to will be included in the internal filesystem and as bindings, as well as the text in said replied message. Their naming scheme is:
+- `img{N}`:\tAttachments in the original message
+- `imgR{N}`:\tAttachments in the referenced message: 
+- `S`:\tThe text in the referenced message
+For example, typing `w!r abs S` will uppercase the replied message's text, or error with `Missing binding` if the message isn't a reply.
 
 Available commands:
 - [`ping`]: pong

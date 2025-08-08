@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -93,8 +94,8 @@ pub async fn run_uiua(
     let backend = NativisedWebBackend::default();
     let mut full_code = String::new();
 
-    let push_attachments = async |attchs: &[Attachment], acc: &mut String, i: &mut usize| {
-        for attachment in attchs.iter().rev() {
+    let push_attachments = async |attchs: &[Attachment], suffix: &str| {
+        for (i, attachment) in attchs.iter().rev().enumerate() {
             let url = &attachment.url;
             match (attachment.width, attachment.height) {
                 (Some(w), Some(h)) if w * h > MAX_ATTACHMENT_IMAGE_PIXEL_COUNT => {
@@ -108,32 +109,32 @@ pub async fn run_uiua(
 
             let data = reqwest::get(url)
                 .await
-                .map_err(|_| format!("could not get image associated with attachment number {i}"))?;
+                .map_err(|_| format!("could not get image associated with attachment number {i} and suffix '{suffix}'"))?;
 
             backend
                 .file_write_all(
-                    format!("img{}", i).as_ref(),
+                    format!("img{i}{suffix}").as_ref(),
                     &data.bytes().await.map_err(|_| {
-                        format!("could not interpret bytes of image of attachment number {i}")
+                        format!("could not interpret bytes of image of attachment number {i}, suffix '{suffix}'")
                     })?,
                 )
                 .unwrap();
-            acc.push_str(&format!("popunimg&frab\"img{i}\"\n"));
-            *i += 1;
         }
         Ok(())
     };
 
     if let Some(text) = text_of_refd {
+        // This is so scuffed, there's definitely a proper way to make a proper binding from Rust
         let text = text.lines().map(|l| format!("$ {l} \n")).collect::<String>();
         full_code.push_str("\n");
         full_code.push_str(&text);
         full_code.push_str("\n");
+        full_code.push_str("S =");
+        backend.file_write_all(&Path::new("S"), &text.as_bytes())?;
     }
-    let mut i = 0;
-    push_attachments(attachments, &mut full_code, &mut i).await?;
+    push_attachments(attachments, "").await?;
     if let Some(a_refd) = attachments_of_refd {
-        push_attachments(a_refd, &mut full_code, &mut i).await?;
+        push_attachments(a_refd, "R").await?;
     }
 
     full_code.push_str(&format!("{code}\n"));
