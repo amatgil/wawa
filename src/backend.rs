@@ -2,14 +2,17 @@
 
 use std::{
     any::Any,
-    collections::HashMap,
+    borrow::{Borrow, BorrowMut},
+    collections::{HashMap, HashSet},
     io::Cursor,
     path::{Path, PathBuf},
     sync::{Mutex, OnceLock},
     time::Duration,
 };
 
-use uiua::{now, Report, SysBackend, EXAMPLE_TXT, EXAMPLE_UA};
+use serenity::futures::future::join_all;
+use tokio::task::spawn_local;
+use uiua::{now, GitTarget, Report, SysBackend, EXAMPLE_TXT, EXAMPLE_UA};
 
 static START_TIME: OnceLock<f64> = OnceLock::new();
 
@@ -19,6 +22,8 @@ pub struct NativisedWebBackend {
     pub stderr: Mutex<String>,
     pub trace: Mutex<String>,
     pub files: Mutex<HashMap<PathBuf, Vec<u8>>>,
+    pub git_cache: Mutex<HashMap<String, Result<String, String>>>,
+    pub git_working: Mutex<HashSet<String>>,
 }
 
 impl NativisedWebBackend {
@@ -39,6 +44,8 @@ impl Default for NativisedWebBackend {
                 ("example.txt".into(), EXAMPLE_TXT.bytes().collect()),
             ])
             .into(),
+            git_cache: Default::default(),
+            git_working: Default::default(),
         }
     }
 }
@@ -150,4 +157,191 @@ impl SysBackend for NativisedWebBackend {
             .map(|p| p.to_string_lossy().to_string())
             .collect())
     }
+    fn load_git_module(&self, original_url: &str, target: GitTarget) -> Result<PathBuf, String> {
+        type Cache = HashMap<String, Result<String, String>>;
+        type Working = HashSet<String>;
+        type Files = HashMap<PathBuf, Vec<u8>>;
+
+        fn cache_url(cache: &mut Cache, url: &str, res: Result<String, String>) {
+            cache.borrow_mut().insert(url.into(), res);
+        }
+
+        fn mark_working(working: &mut Working, url: &str) {
+            working.borrow_mut().insert(url.into());
+        }
+
+        fn unmark_working(working: &mut Working, url: &str) {
+            working.borrow_mut().remove(url);
+        }
+
+        pub fn drop_file(files: &mut Files, path: PathBuf, contents: Vec<u8>) {
+            files.borrow_mut().insert(path, contents);
+        }
+
+        pub fn delete_file(files: &mut Files, path: &PathBuf) {
+            files.borrow_mut().remove(path);
+        }
+
+        let mut cache = self.git_cache.lock().expect("poisoned thread");
+        let mut working = self.git_working.lock().expect("poisoned thread");
+
+        if working.borrow().contains(original_url) {
+            return Err("Waiting for module, try running again in a moment...".into());
+        }
+
+        match target {
+            GitTarget::Default => {}
+            GitTarget::Branch(_) => {
+                return Err("Git branch specification is not supported in the wawaing".into())
+            }
+            GitTarget::Commit(_) => {
+                return Err("Git commit specification is not supported in the wawaing".into())
+            }
+        }
+        let (repo_owner, repo_name, path) = {
+            let mut parts = original_url.rsplitn(3, '/');
+            let repo_name = parts.next().ok_or("Invalid git url")?;
+            let repo_owner = parts.next().ok_or("Invalid git url")?;
+            let path = Path::new("uiua-modules")
+                .join(repo_owner)
+                .join(repo_name)
+                .join("lib.ua");
+
+            (repo_owner.to_string(), repo_name.to_string(), path)
+        };
+        let mut files = self.files.lock().expect("poisoned thread");
+
+        if files.borrow().contains_key(&path) {
+            return Ok(path);
+        }
+
+        let mut url = original_url
+            .trim_end_matches('/')
+            .replace("www.", "")
+            .replace("github.com", "raw.githubusercontent.com")
+            .replace("src/branch/master", "raw/branch/master");
+
+        if !url.ends_with(".ua") {
+            url = format!("{url}/main/lib.ua");
+        }
+
+        let res = if let Some(res) = cache.borrow().get(&url) {
+            Some(res.clone())
+        } else if original_url.contains("github.com") && url.ends_with("/lib.ua") {
+            mark_working(&mut working, original_url);
+            let original_url = original_url.to_string();
+
+            spawn_local(async move {
+                let tree_res = fetch(&format!(
+                    "https://api.github.com\
+                        /repos/{repo_owner}/{repo_name}/git/trees/main?recursive=1",
+                ))
+                .await;
+
+                match tree_res {
+                    Err(_) => {
+                        cache_url(&mut cache, &url, tree_res);
+                        unmark_working(&mut working, &original_url);
+                        return;
+                    }
+                    Ok(_) => {
+                        let tree = tree_res.unwrap();
+                        let tree: serde_json::Value = serde_json::from_str(&tree).unwrap();
+                        let tree = tree.get("tree").unwrap().as_array().unwrap();
+                        let paths = tree
+                            .iter()
+                            .filter_map(|entry| {
+                                let path = entry.get("path")?.as_str()?;
+                                if path.ends_with(".ua") {
+                                    Some(path.to_string())
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect::<HashSet<_>>();
+
+                        if !paths.contains("lib.ua") {
+                            cache_url(&mut cache, &url, Err("lib.ua not found".into()));
+                            unmark_working(&mut working, &original_url);
+                            return;
+                        }
+
+                        let results = join_all(paths.iter().map(|path| {
+                            let repo_owner = repo_owner.clone();
+                            let repo_name = repo_name.clone();
+                            async move {
+                                let fetch_url = format!(
+                                    "https://raw.githubusercontent.com\
+                                        /{repo_owner}/{repo_name}/main/{path}",
+                                );
+                                let internal_path = Path::new("uiua-modules")
+                                    .join(repo_owner)
+                                    .join(repo_name)
+                                    .join(path.clone());
+
+                                (path, internal_path, fetch(fetch_url.as_str()).await)
+                            }
+                        }))
+                        .await;
+
+                        for (original_path, internal_path, res) in results {
+                            if original_path.eq("lib.ua") {
+                                cache_url(&mut cache, &url, res.clone());
+                            }
+
+                            if let Ok(text) = res {
+                                let contents = text.as_bytes().to_vec();
+                                drop_file(&mut files, internal_path.clone(), contents);
+                            }
+                        }
+                    }
+                }
+
+                unmark_working(&mut working, &original_url);
+            });
+            None
+        } else {
+            mark_working(&mut working, original_url);
+            let original_url = original_url.to_string();
+            spawn_local(async move {
+                let res = fetch(&url).await;
+                cache_url(&mut cache, &url, res);
+                unmark_working(&mut working, &original_url);
+            });
+            None
+        };
+
+        match res {
+            Some(Ok(text)) => {
+                let contents = text.as_bytes().to_vec();
+                drop_file(&mut files, path.clone(), contents);
+                Ok(path)
+            }
+            Some(Err(err)) => Err(err),
+            None => Err("Waiting for module, try running again in a moment...".into()),
+        }
+    }
+}
+pub async fn fetch(url: &str) -> Result<String, String> {
+    todo!()
+    /*
+    let opts = RequestInit::new();
+    opts.set_method("GET");
+    opts.set_mode(RequestMode::Cors);
+    let request = Request::new_with_str_and_init(url, &opts).map_err(|e| format!("{e:?}"))?;
+    let window = web_sys::window().unwrap();
+    let resp_value = JsFuture::from(window.fetch_with_request(&request))
+        .await
+        .map_err(|e| format!("{e:?}"))?;
+    assert!(resp_value.is_instance_of::<Response>());
+    let resp: Response = resp_value.dyn_into().unwrap();
+    let text = JsFuture::from(resp.text().map_err(|e| format!("{e:?}"))?)
+        .await
+        .map(|s| s.as_string().unwrap())
+        .map_err(|e| format!("{e:?}"))?;
+    if resp.status() == 200 {
+        Ok(text)
+    } else {
+        Err(text)
+    }*/
 }

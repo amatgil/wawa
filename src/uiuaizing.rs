@@ -10,7 +10,7 @@ use serenity::all::{Attachment, Context, CreateAttachment, Emoji, Http, Message}
 use std::fmt::Write;
 use std::str;
 use tracing::{info, trace};
-use uiua::{PrimDoc, SysBackend};
+use uiua::{Compiler, PrimDoc, SysBackend};
 use uiua::{PrimDocFragment, PrimDocLine, Primitive, Uiua};
 
 const MIN_AUTO_IMAGE_DIM: usize = 30;
@@ -73,6 +73,10 @@ impl From<uiua::Value> for OutputItem {
 
         OutputItem::String(value.show())
     }
+}
+
+fn as_subscript(s: u32) -> String {
+    todo!()
 }
 
 /// Returns (stdout, top-most elements of stack)
