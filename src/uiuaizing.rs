@@ -94,7 +94,7 @@ pub async fn run_uiua(
     let backend = NativisedWebBackend::default();
     let mut full_code = String::new();
 
-    let push_attachments = async |attchs: &[Attachment], suffix: &str| {
+    let push_attachments = async |attchs: &[Attachment], acc: &mut String, suffix: &str| {
         for (i, attachment) in attchs.iter().rev().enumerate() {
             let url = &attachment.url;
             match (attachment.width, attachment.height) {
@@ -119,6 +119,7 @@ pub async fn run_uiua(
                     })?,
                 )
                 .unwrap();
+            acc.push_str(&format!("I{suffix}__{i} = popunimg&frab\"img{suffix}{i}\"\n"));
         }
         Ok(())
     };
@@ -129,13 +130,14 @@ pub async fn run_uiua(
         full_code.push_str("\n");
         full_code.push_str(&text_split);
         full_code.push_str("\n");
-        full_code.push_str("S =");
+        full_code.push_str("S =\n");
         backend.file_write_all(&Path::new("S"), &text.as_bytes())?;
     }
-    push_attachments(attachments, "").await?;
+    push_attachments(attachments, &mut full_code, "").await?;
     if let Some(a_refd) = attachments_of_refd {
-        push_attachments(a_refd, "R").await?;
+        push_attachments(a_refd, &mut full_code, "R").await?;
     }
+
 
     full_code.push_str(&format!("{code}\n"));
 

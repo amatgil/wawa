@@ -19,8 +19,8 @@ Run with either `w!` or `wawa!`
 You can delete any wawa message (that you triggered, or whose original message was deleted) by reacting with :x:.
 
 All attachments that you include in your message or that exist in the message you're replying to will be included in the internal filesystem and as bindings, as well as the text in said replied message. Their naming scheme is:
-- `img{N}`:\tAttachments in the original message
-- `imgR{N}`:\tAttachments in the referenced message: 
+- `img,{N}`: Attachments in the original message
+- `imgR,{N}`: Attachments in the referenced message: 
 - `S`:\tThe text in the referenced message
 For example, typing `w!r abs S` will uppercase the replied message's text, or error with `Missing binding` if the message isn't a reply.
 
