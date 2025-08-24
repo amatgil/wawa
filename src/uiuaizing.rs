@@ -109,17 +109,14 @@ pub async fn run_uiua(
                             "Attachment {i} has (width, height) := ({w}, {h}), which is too many pixels (maximum is {MAX_ATTACHMENT_IMAGE_PIXEL_COUNT})"
                         ));
                 }
-                let n = i;
-                let data = reqwest::get(url).await.map_err(|_| {
-                    format!(
-                        "could not get image data associated with attachment number\
-                             {n} and name '{binding_name_for_if_image}'"
-                    )
-                })?;
+                let filename = format!("{binding_name_for_if_image}__{i}");
+                let data = reqwest::get(url)
+                    .await
+                    .map_err(|_| format!("could not get image data associated with {filename}'"))?;
                 i += 1;
-                (&format!("{binding_name_for_if_image}__{n}"), data, true)
+                (filename, data, true)
             } else {
-                let filename = &attachment.filename;
+                let filename = attachment.filename.clone();
                 let data = reqwest::get(url)
                     .await
                     .map_err(|_| format!("could not get attachment data for '{filename}'"))?;
@@ -130,7 +127,7 @@ pub async fn run_uiua(
                 .file_write_all(
                     filename.as_ref(),
                     &data.bytes().await.map_err(|_| {
-                        format!("could not interpret bytes of image of attachment {filename}'")
+                        format!("could not interpret bytes of attachment {filename}'")
                     })?,
                 )
                 .unwrap();
