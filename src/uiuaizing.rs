@@ -94,72 +94,68 @@ pub async fn run_uiua(
     let backend = NativisedWebBackend::default();
     let mut full_code = String::new();
 
-    let push_img_attachments = async |attchs: Vec<&Attachment>, acc: &mut String, binding_name: &str| {
-        for (i, attachment) in attchs.iter().rev().enumerate() {
-            let url = &attachment.url;
-            match (attachment.width, attachment.height) {
-                (Some(w), Some(h)) if w * h > MAX_ATTACHMENT_IMAGE_PIXEL_COUNT => {
-                    return Err(format!(
-                        "Attachment {i} has (width, height) := ({w}, {h}), which is too many pixels (maximum is {MAX_ATTACHMENT_IMAGE_PIXEL_COUNT})"
-                    ))
-                }
-                (None, _) | (_, None) => return Err(format!("Attachment {i} did not come with a width xor height, and I've only implemented images for now")),
-                _ => {}
-            }
+    let push_attachments = async |attchs: &[Attachment],
+                                  acc: &mut String,
+                                  binding_name_for_if_image: &str| {
+        let mut i = 0; // image index, not incremented for non-image attachemnts
 
-            let data = reqwest::get(url)
-                .await
-                .map_err(|_| format!("could not get image associated with attachment number {i} and name '{binding_name}'"))?;
+        for attachment in attchs.iter().rev() {
+            let url = &attachment.url;
+            let (filename, data, is_image) = if let (Some(w), Some(h)) =
+                (attachment.width, attachment.height)
+            {
+                if w * h > MAX_ATTACHMENT_IMAGE_PIXEL_COUNT {
+                    return Err(format!(
+                            "Attachment {i} has (width, height) := ({w}, {h}), which is too many pixels (maximum is {MAX_ATTACHMENT_IMAGE_PIXEL_COUNT})"
+                        ));
+                }
+                let n = i;
+                let data = reqwest::get(url).await.map_err(|_| {
+                    format!(
+                        "could not get image data associated with attachment number\
+                             {n} and name '{binding_name_for_if_image}'"
+                    )
+                })?;
+                i += 1;
+                (&format!("{binding_name_for_if_image}__{n}"), data, true)
+            } else {
+                let filename = &attachment.filename;
+                let data = reqwest::get(url)
+                    .await
+                    .map_err(|_| format!("could not get attachment data for '{filename}'"))?;
+                (filename, data, false)
+            };
 
             backend
                 .file_write_all(
-                    format!("{binding_name}{i}").as_ref(),
+                    filename.as_ref(),
                     &data.bytes().await.map_err(|_| {
-                        format!("could not interpret bytes of image of attachment number {i}, name '{binding_name}'")
+                        format!("could not interpret bytes of image of attachment {filename}'")
                     })?,
                 )
                 .unwrap();
-            acc.push_str(&format!("{binding_name}__{i} = popunimg&frab\"{binding_name}{i}\"\n"));
+            if is_image {
+                acc.push_str(&format!("{filename} = popunimg&frab\"{filename}\"\n"));
+            }
         }
         Ok(())
     };
-    let push_non_img_attachments = async |attchs: Vec<&Attachment>| {
-        for attachment in attchs {
-            let url = &attachment.url;
-            let filename = &attachment.filename;
-            let data = reqwest::get(url)
-                .await
-                .map_err(|_| format!("could not get attachment '{filename}'"))?;
-            backend
-                .file_write_all(
-                    format!("{filename}").as_ref(),
-                    &data.bytes().await.map_err(|_| {
-                        format!("could not get attachemnt '{filename}'")
-                    })?,
-                )
-                .unwrap();
-        }
-        Ok::<(), String>(())
-    };
-
-    let is_image = |a: &Attachment| a.width.is_some() && a.height.is_some();
-
     if let Some(text) = text_of_refd {
         // This is so scuffed, there's definitely a proper way to make a proper binding from Rust
-        let text_split = text.lines().map(|l| format!("$ {l} \n")).collect::<String>();
+        let text_split = text
+            .lines()
+            .map(|l| format!("$ {l} \n"))
+            .collect::<String>();
         full_code.push_str("\n");
         full_code.push_str(&text_split);
         full_code.push_str("\n");
         full_code.push_str("S =\n");
         backend.file_write_all(&Path::new("S"), &text.as_bytes())?;
     }
-    push_img_attachments(attachments.iter().filter(|a| is_image(*a)).collect::<Vec<_>>(), &mut full_code, "I").await?;
-    push_non_img_attachments(attachments.iter().filter(|a| !is_image(*a)).collect::<Vec<_>>()).await?;
+    push_attachments(attachments, &mut full_code, "I").await?;
     if let Some(a_refd) = attachments_of_refd {
-        push_img_attachments(a_refd.into_iter().filter(|a| is_image(*a)).collect::<Vec<_>>(), &mut full_code, "R").await?;
-        push_non_img_attachments(a_refd.iter().filter(|a| !is_image(*a)).collect::<Vec<_>>()).await?;
+        push_attachments(a_refd, &mut full_code, "R").await?;
     }
-
 
     full_code.push_str(&format!("{code}\n"));
 
@@ -213,23 +209,30 @@ pub async fn get_docs(f: &str, ctx: Context, msg: Message) -> String {
 
             let name = docs.name();
             let name = name.split_once(" ").map(|pair| pair.0).unwrap_or(name);
-            let final_result = |long: &str| format!("\n{short}\n\n\n{long}\n\n([More information](https://uiua.org/docs/{name}))");
+            let final_result = |long: &str| {
+                format!(
+                    "\n{short}\n\n\n{long}\n\n([More information](https://uiua.org/docs/{name}))"
+                )
+            };
 
-            let long = PrimDoc::from(docs)
-                .lines
-                .into_iter()
-                .fold(String::new(), |mut acc, docs| {
-                    let new = print_docs(&emojis, &docs);
-                    if final_result(&acc).len() + new.len() + 1 < MAX_MSG_LEN { 
-                        acc.push('\n');
-                        acc.push_str(&new); 
-                    }
-                    acc
-                });
+            let long =
+                PrimDoc::from(docs)
+                    .lines
+                    .into_iter()
+                    .fold(String::new(), |mut acc, docs| {
+                        let new = print_docs(&emojis, &docs);
+                        if final_result(&acc).len() + new.len() + 1 < MAX_MSG_LEN {
+                            acc.push('\n');
+                            acc.push_str(&new);
+                        }
+                        acc
+                    });
 
             final_result(&long)
-        } 
-        None => format!("No docs found for '{f}', did you spell it right? (For full docs, see [full docs](https://www.uiua.org/docs))"),
+        }
+        None => format!(
+            "No docs found for '{f}', did you spell it right? (For full docs, see [full docs](https://www.uiua.org/docs))"
+        ),
     }
 }
 
@@ -304,9 +307,17 @@ pub async fn get_output(
         .await;
         return None;
     }
-    let text_of_refd = msg.referenced_message.as_ref().map(|refd| refd.content.clone());
+    let text_of_refd = msg
+        .referenced_message
+        .as_ref()
+        .map(|refd| refd.content.clone());
     let attachments_of_refd = msg.referenced_message.map(|refd| refd.attachments);
-    let result = run_uiua(strip_triple_ticks(code.trim()), &msg.attachments, text_of_refd.as_deref(), attachments_of_refd.as_deref());
+    let result = run_uiua(
+        strip_triple_ticks(code.trim()),
+        &msg.attachments,
+        text_of_refd.as_deref(),
+        attachments_of_refd.as_deref(),
+    );
 
     let mut output = String::new();
     let mut attachments = Vec::new();
