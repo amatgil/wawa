@@ -94,7 +94,7 @@ pub async fn run_uiua(
     let backend = NativisedWebBackend::default();
     let mut full_code = String::new();
 
-    let push_attachments = async |attchs: &[Attachment], acc: &mut String, suffix: &str| {
+    let push_attachments = async |attchs: &[Attachment], acc: &mut String, binding_name: &str| {
         for (i, attachment) in attchs.iter().rev().enumerate() {
             let url = &attachment.url;
             match (attachment.width, attachment.height) {
@@ -103,23 +103,23 @@ pub async fn run_uiua(
                         "Attachment {i} has (width, height) := ({w}, {h}), which is too many pixels (maximum is {MAX_ATTACHMENT_IMAGE_PIXEL_COUNT})"
                     ))
                 }
-                (None, _) | (_, None) => return Err(format!("Attachment {i} did not come with a width or height, and I've only implemented images for now")),
+                (None, _) | (_, None) => return Err(format!("Attachment {i} did not come with a width and height, and I've only implemented images for now")),
                 _ => {}
             }
 
             let data = reqwest::get(url)
                 .await
-                .map_err(|_| format!("could not get image associated with attachment number {i} and suffix '{suffix}'"))?;
+                .map_err(|_| format!("could not get image associated with attachment number {i} and name '{binding_name}'"))?;
 
             backend
                 .file_write_all(
-                    format!("img{suffix}{i}").as_ref(),
+                    format!("{binding_name}{i}").as_ref(),
                     &data.bytes().await.map_err(|_| {
-                        format!("could not interpret bytes of image of attachment number {i}, suffix '{suffix}'")
+                        format!("could not interpret bytes of image of attachment number {i}, name '{binding_name}'")
                     })?,
                 )
                 .unwrap();
-            acc.push_str(&format!("I{suffix}__{i} = popunimg&frab\"img{suffix}{i}\"\n"));
+            acc.push_str(&format!("{binding_name}__{i} = popunimg&frab\"{binding_name}{i}\"\n"));
         }
         Ok(())
     };
@@ -133,7 +133,7 @@ pub async fn run_uiua(
         full_code.push_str("S =\n");
         backend.file_write_all(&Path::new("S"), &text.as_bytes())?;
     }
-    push_attachments(attachments, &mut full_code, "").await?;
+    push_attachments(attachments, &mut full_code, "I").await?;
     if let Some(a_refd) = attachments_of_refd {
         push_attachments(a_refd, &mut full_code, "R").await?;
     }
