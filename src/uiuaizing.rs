@@ -94,7 +94,7 @@ pub async fn run_uiua(
     let backend = NativisedWebBackend::default();
     let mut full_code = String::new();
 
-    let push_attachments = async |attchs: &[Attachment], acc: &mut String, binding_name: &str| {
+    let push_img_attachments = async |attchs: Vec<&Attachment>, acc: &mut String, binding_name: &str| {
         for (i, attachment) in attchs.iter().rev().enumerate() {
             let url = &attachment.url;
             match (attachment.width, attachment.height) {
@@ -103,7 +103,7 @@ pub async fn run_uiua(
                         "Attachment {i} has (width, height) := ({w}, {h}), which is too many pixels (maximum is {MAX_ATTACHMENT_IMAGE_PIXEL_COUNT})"
                     ))
                 }
-                (None, _) | (_, None) => return Err(format!("Attachment {i} did not come with a width and height, and I've only implemented images for now")),
+                (None, _) | (_, None) => return Err(format!("Attachment {i} did not come with a width xor height, and I've only implemented images for now")),
                 _ => {}
             }
 
@@ -123,6 +123,26 @@ pub async fn run_uiua(
         }
         Ok(())
     };
+    let push_non_img_attachments = async |attchs: Vec<&Attachment>| {
+        for attachment in attchs {
+            let url = &attachment.url;
+            let filename = &attachment.filename;
+            let data = reqwest::get(url)
+                .await
+                .map_err(|_| format!("could not get attachment '{filename}'"))?;
+            backend
+                .file_write_all(
+                    format!("{filename}").as_ref(),
+                    &data.bytes().await.map_err(|_| {
+                        format!("could not get attachemnt '{filename}'")
+                    })?,
+                )
+                .unwrap();
+        }
+        Ok::<(), String>(())
+    };
+
+    let is_image = |a: &Attachment| a.width.is_some() && a.height.is_some();
 
     if let Some(text) = text_of_refd {
         // This is so scuffed, there's definitely a proper way to make a proper binding from Rust
@@ -133,9 +153,11 @@ pub async fn run_uiua(
         full_code.push_str("S =\n");
         backend.file_write_all(&Path::new("S"), &text.as_bytes())?;
     }
-    push_attachments(attachments, &mut full_code, "I").await?;
+    push_img_attachments(attachments.iter().filter(|a| is_image(*a)).collect::<Vec<_>>(), &mut full_code, "I").await?;
+    push_non_img_attachments(attachments.iter().filter(|a| !is_image(*a)).collect::<Vec<_>>()).await?;
     if let Some(a_refd) = attachments_of_refd {
-        push_attachments(a_refd, &mut full_code, "R").await?;
+        push_img_attachments(a_refd.into_iter().filter(|a| is_image(*a)).collect::<Vec<_>>(), &mut full_code, "R").await?;
+        push_non_img_attachments(a_refd.iter().filter(|a| !is_image(*a)).collect::<Vec<_>>()).await?;
     }
 
 
