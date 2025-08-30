@@ -96,31 +96,31 @@ pub async fn run_uiua(
 
     let push_attachments = async |attchs: &[Attachment],
                                   acc: &mut String,
-                                  binding_name_for_if_image: &str| {
+                                  bindname_if_img: &str| {
         let mut i = 0; // image index, not incremented for non-image attachemnts
 
         for attachment in attchs.iter().rev() {
             let url = &attachment.url;
-            let (filename, data, is_image) = if let (Some(w), Some(h)) =
-                (attachment.width, attachment.height)
-            {
+            let filename = attachment.filename.clone();
+            let data = if let (Some(w), Some(h)) = (attachment.width, attachment.height) {
                 if w * h > MAX_ATTACHMENT_IMAGE_PIXEL_COUNT {
                     return Err(format!(
-                            "Attachment {i} has (width, height) := ({w}, {h}), which is too many pixels (maximum is {MAX_ATTACHMENT_IMAGE_PIXEL_COUNT})"
-                        ));
+                               "Attachment {i} has (width, height) := ({w}, {h}), which \
+                                is too many pixels ({}) (maximum is {MAX_ATTACHMENT_IMAGE_PIXEL_COUNT})",
+                               w*h));
                 }
-                let filename = format!("{binding_name_for_if_image}__{i}");
-                let data = reqwest::get(url)
-                    .await
-                    .map_err(|_| format!("could not get image data associated with {filename}'"))?;
+                acc.push_str(&format!(
+                    "{} = popunimg&frab\"{filename}\"\n",
+                    format!("{bindname_if_img}__{i}")
+                ));
                 i += 1;
-                (filename, data, true)
-            } else {
-                let filename = attachment.filename.clone();
-                let data = reqwest::get(url)
+                reqwest::get(url)
                     .await
-                    .map_err(|_| format!("could not get attachment data for '{filename}'"))?;
-                (filename, data, false)
+                    .map_err(|_| format!("could not get image data associated with {filename}'"))?
+            } else {
+                reqwest::get(url)
+                    .await
+                    .map_err(|_| format!("could not get attachment data for '{filename}'"))?
             };
 
             backend
@@ -131,9 +131,6 @@ pub async fn run_uiua(
                     })?,
                 )
                 .unwrap();
-            if is_image {
-                acc.push_str(&format!("{filename} = popunimg&frab\"{filename}\"\n"));
-            }
         }
         Ok(())
     };
