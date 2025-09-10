@@ -22,14 +22,6 @@ use wawa::*;
 
 const ANSWERED_MESSAGES_PATH: &str = "/tmp/wawa_answered_messages_path/";
 
-static SELF_HANDLE: LazyLock<String> =
-    LazyLock::new(|| dotenv::var("BOT_SELF_HANDLE").unwrap_or_else(|_| "wawa#0280".into()));
-static SELF_ID: LazyLock<u64> =
-    LazyLock::new(|| match dotenv::var("BOT_SELF_ID").map(|str| str.parse()) {
-        Ok(Ok(id)) => id,
-        _ => 1295816766446108795,
-    });
-
 struct Handler;
 
 #[instrument(skip_all)]
@@ -48,32 +40,7 @@ async fn handle_message(ctx: Context, msg: Message) {
         "Starting to parse message"
     );
 
-    let prefixes = [
-        "w!",
-        "W!",
-        "Wawa!",
-        "wawa!",
-        &format!("@{}", *SELF_HANDLE),
-        &format!("<@{}>", *SELF_ID),
-        &format!("<@&{}>", *SELF_ID), /* Self-role */
-    ];
-
-    let lines = trimmed
-        .lines()
-        .skip_while(|line| {
-            !prefixes
-                .iter()
-                .any(|prefix| line.trim_start().starts_with(prefix))
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-    let lines = lines.trim_start();
-
-    let commanded = prefixes.iter().fold(None, |acc, prefix| {
-        acc.or_else(|| lines.strip_prefix(prefix))
-    });
-
-    if let Some(s) = commanded {
+    if let Some(s) = strip_wawa_prefix(trimmed) {
         let span = span!(Level::TRACE, "command_handler");
         let _guard = span.enter();
         info!(user = msg.author.name, body = ?s, "Processing body");
@@ -202,49 +169,86 @@ impl EventHandler for Handler {
         let command_message = match reacted_message.clone().referenced_message {
             Some(cm) => cm,
             None => {
-                trace!("Wawa message seems to be in reply to an unreachable message"); // Probs deleted
-                                                                                       // We will accept it regardless
-                match reacted_message.delete(ctx.http).await {
-                    Ok(()) => trace!("Message deleted (command does not exist anymore, so we're accepting deletion command)"),
-                    Err(error) => trace!(?error, "Error deleting message"),
+                trace!("Wawa message seems to be in reply to an unreachable message"); /* Probs deleted
+                                                                                       We will accept it regardless,
+                                                                                       the author has given up ownership */
+
+                if reaction.emoji == ReactionType::Unicode("❌".to_string()) {
+                    match reacted_message.delete(ctx.http).await {
+                        Ok(()) => trace!("Message deleted (command does not exist anymore, so we're accepting deletion command)"),
+                        Err(error) => trace!(?error, "Error deleting message"),
+                    }
+                } else if ['❓', '❔']
+                    .iter()
+                    .any(|q| reaction.emoji == ReactionType::Unicode(q.to_string()))
+                {
+                    send_message(reacted_message, &ctx.http, "The message you've asked me to fetch a pad-link for seems to not have its source message available :(").await
                 }
                 return;
             }
         };
 
-        if Some(command_message.author.id) == reaction.user_id {
-            // Authorized user sent it!
-            trace!(
-                user = command_message.author.name,
-                "Authorized emoji detected on wawa message"
-            );
-
-            if reaction.emoji != ReactionType::Unicode("❌".to_string()) {
-                trace!("Emoji is NOT cross, skipping");
-                return;
+        if ['❓', '❔']
+            .into_iter()
+            .any(|q| reaction.emoji == ReactionType::Unicode(q.into()))
+        {
+            match strip_wawa_prefix(&command_message.content) {
+                Some(mut s) => {
+                    // This handling fails on code that doesn't have a command (e.g. `w! +1 1`), but that should be so rare
+                    // that it's fine
+                    let Some(whitespace_idx) = s.char_indices().filter(|(_i, c)| c.is_whitespace()).next().map(|(i, c)| i+c.len_utf8()) else {
+                        trace!(s, "Replying to message with malformed prefix");
+                        send_message(
+                            reacted_message,
+                            &ctx.http,
+                            "The message that you've requested the pad of seems to have a malformed wawa prefix",).await;
+                        return;
+                    };
+                    let body = s.split_off(whitespace_idx);
+                    trace!(s, "Got a question mark, all ok!");
+                    send_message(
+                        reacted_message,
+                        &ctx.http,
+                        &format_and_get_pad_link(body.trim()),
+                    ).await
+                }
+                None =>  {
+                    send_message(
+                        reacted_message,
+                        &ctx.http,
+                        "I seem to have replied to a message that did not contain a prefix? Whar (please report this)",
+                    ).await
+                }
             }
-
+        } else if reaction.emoji == ReactionType::Unicode("❌".to_string()) {
             trace!("Emoji is cross, proceeding to deletion");
-            match reacted_message.delete(ctx.http).await {
+            match reacted_message.delete(&ctx.http).await {
                 Ok(()) => trace!("Message deleted"),
                 Err(error) => trace!(?error, "Error deleting message"),
             }
-        } else {
-            // Unauthorized, this is all for tracing
-            let emoji_sender: Option<String> = if let Some(emoji_sender_id) = reaction.user_id {
-                ctx.http
-                    .get_user(emoji_sender_id)
-                    .await
-                    .map(|r| r.name)
-                    .ok()
+            if Some(command_message.author.id) == reaction.user_id {
+                // Authorized user sent it!
+                trace!(
+                    user = command_message.author.name,
+                    "Authorized emoji detected on wawa message"
+                );
             } else {
-                None
-            };
-            trace!(
-                command_sender = command_message.author.name,
-                emoji_sender,
-                "UN-authoritzed emoji detected on wawa message, ignoring"
-            );
+                // Unauthorized, what follows is all for tracing
+                let emoji_sender: Option<String> = if let Some(emoji_sender_id) = reaction.user_id {
+                    ctx.http
+                        .get_user(emoji_sender_id)
+                        .await
+                        .map(|r| r.name)
+                        .ok()
+                } else {
+                    None
+                };
+                trace!(
+                    command_sender = command_message.author.name,
+                    emoji_sender,
+                    "UN-authoritzed emoji detected on wawa message, ignoring"
+                );
+            }
         }
     }
 }

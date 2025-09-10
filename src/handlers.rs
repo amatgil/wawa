@@ -17,6 +17,7 @@ Your friendly neighbourhood uiua bot!
 Run with either `w!` or `wawa!`
 
 You can delete any wawa message (that you triggered, or whose original message was deleted) by reacting with :x:.
+You can get the pad link of any wawa message by reaction with :question: to wawa's response.
 
 All attachments that you include in your message or that exist in the message you're replying to will be included in the internal filesystem and as bindings, as well as the text in said replied message. Their naming scheme is:
 - `I,{N}`: Attachments in the original message
@@ -351,4 +352,34 @@ pub fn update_stdout_output(
         format!("{name}_{}.{ext}", attachments.len() + 1),
     ));
     (output, attachments)
+}
+
+pub fn strip_wawa_prefix(text: &str) -> Option<String> {
+    let prefixes = [
+        "w!",
+        "W!",
+        "Wawa!",
+        "wawa!",
+        &format!("@{}", *SELF_HANDLE),
+        &format!("<@{}>", *SELF_ID),
+        &format!("<@&{}>", *SELF_ID), /* Self-role */
+    ];
+
+    let lines = text
+        .lines()
+        .skip_while(|line| {
+            !prefixes
+                .iter()
+                .any(|prefix| line.trim_start().starts_with(prefix))
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    let lines = lines.trim_start();
+
+    prefixes
+        .iter()
+        .fold(None, |acc, prefix| {
+            acc.or_else(|| lines.strip_prefix(prefix))
+        })
+        .map(|s| s.to_string())
 }
