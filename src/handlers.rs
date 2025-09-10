@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::*;
 use serenity::all::{
     Context, CreateAllowedMentions, CreateAttachment, CreateMessage, Embed, Emoji, GuildId, Http,
-    Message,
+    Message, ReactionType,
 };
 use std::fmt::Write;
 use std::sync::LazyLock;
@@ -382,4 +382,10 @@ pub fn strip_wawa_prefix(text: &str) -> Option<String> {
             acc.or_else(|| lines.strip_prefix(prefix))
         })
         .map(|s| s.to_string())
+}
+
+pub fn is_question_mark(c: &ReactionType) -> bool {
+    ['❓', '❔']
+        .into_iter()
+        .any(|q| c == &ReactionType::Unicode(q.into()))
 }

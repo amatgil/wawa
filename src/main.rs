@@ -188,10 +188,21 @@ impl EventHandler for Handler {
             }
         };
 
-        if ['❓', '❔']
-            .into_iter()
-            .any(|q| reaction.emoji == ReactionType::Unicode(q.into()))
-        {
+        if is_question_mark(&reaction.emoji) {
+            if reacted_message
+                .reactions
+                .iter()
+                .filter(|r| is_question_mark(&r.reaction_type))
+                .next()
+                .map(|info| info.count > 1)
+                .unwrap_or(false)
+            {
+                trace!(
+                    ?reacted_message.reactions,
+                    "Message already contains question mark"
+                );
+                return;
+            }
             match strip_wawa_prefix(&command_message.content) {
                 Some(mut s) => {
                     // This handling fails on code that doesn't have a command (e.g. `w! +1 1`), but that should be so rare
@@ -199,7 +210,7 @@ impl EventHandler for Handler {
                     let Some(whitespace_idx) = s.char_indices().filter(|(_i, c)| c.is_whitespace()).next().map(|(i, c)| i+c.len_utf8()) else {
                         trace!(s, "Replying to message with malformed prefix");
                         send_message(
-                            reacted_message,
+                            *command_message,
                             &ctx.http,
                             "The message that you've requested the pad of seems to have a malformed wawa prefix",).await;
                         return;
@@ -207,14 +218,14 @@ impl EventHandler for Handler {
                     let body = s.split_off(whitespace_idx);
                     trace!(s, "Got a question mark, all ok!");
                     send_message(
-                        reacted_message,
+                        *command_message,
                         &ctx.http,
                         &format_and_get_pad_link(body.trim()),
                     ).await
                 }
                 None =>  {
                     send_message(
-                        reacted_message,
+                        *command_message,
                         &ctx.http,
                         "I seem to have replied to a message that did not contain a prefix? Whar (please report this)",
                     ).await
