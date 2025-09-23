@@ -178,10 +178,7 @@ impl EventHandler for Handler {
                         Ok(()) => trace!("Message deleted (command does not exist anymore, so we're accepting deletion command)"),
                         Err(error) => trace!(?error, "Error deleting message"),
                     }
-                } else if ['❓', '❔']
-                    .iter()
-                    .any(|q| reaction.emoji == ReactionType::Unicode(q.to_string()))
-                {
+                } else if is_question_mark(q) {
                     send_message(reacted_message, &ctx.http, "The message you've asked me to fetch a pad-link for seems to not have its source message available :(").await
                 }
                 return;
@@ -193,7 +190,7 @@ impl EventHandler for Handler {
                 .reactions
                 .iter()
                 .filter(|r| is_question_mark(&r.reaction_type))
-                .next()
+                .next() // this should probably be 'sum' but meh
                 .map(|info| info.count > 1) // the '1' includes wawa's!
                 .unwrap_or(false)
             {
@@ -205,8 +202,7 @@ impl EventHandler for Handler {
             }
             match strip_wawa_prefix(&command_message.content) {
                 Some(mut s) => {
-                    // This handling fails on code that doesn't have a command (e.g. `w! +1 1`), but that should be so rare
-                    // that it's fine
+                    // This handling fails on code that doesn't have a command (e.g. `w! +1 1`), but that should be so rare that it's fine
                     let Some(whitespace_idx) = s.char_indices().filter(|(_i, c)| c.is_whitespace()).next().map(|(i, c)| i+c.len_utf8()) else {
                         trace!(s, "Replying to message with malformed prefix");
                         send_message(
@@ -215,7 +211,6 @@ impl EventHandler for Handler {
                             "The message that you've requested the pad of seems to have a malformed wawa prefix",).await;
                         return;
                     };
-                    // TODO: react with question mark on the message to avoid chaining
                     let body = s.split_off(whitespace_idx);
                     _ = reacted_message.react(ctx.http.clone(), ReactionType::Unicode("❔".to_string())).await;
                     trace!(s, "Got a question mark, all ok!");

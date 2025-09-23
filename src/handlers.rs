@@ -385,7 +385,5 @@ pub fn strip_wawa_prefix(text: &str) -> Option<String> {
 }
 
 pub fn is_question_mark(c: &ReactionType) -> bool {
-    ['❓', '❔']
-        .into_iter()
-        .any(|q| c == &ReactionType::Unicode(q.into()))
+    c == &ReactionType::Unicode('❔'.into())
 }
