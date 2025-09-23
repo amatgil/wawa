@@ -261,6 +261,9 @@ pub async fn emojificate(code: &str, msg: Message, ctx: Context) -> String {
             let lower = text.to_lowercase();
 
             let output = match s.value {
+                SpanKind::Primitive(prim, ..) if prim.name() == "now" => {
+                    Some(":clock:".to_string())
+                }
                 SpanKind::Primitive(prim, ..) => find_emoji(&emojis, prim.name()),
                 SpanKind::Obverse(..) => find_emoji(&emojis, "obverse"),
                 SpanKind::Subscript(.., Some(_)) => text
