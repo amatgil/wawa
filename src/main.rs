@@ -194,7 +194,7 @@ impl EventHandler for Handler {
                 .iter()
                 .filter(|r| is_question_mark(&r.reaction_type))
                 .next()
-                .map(|info| info.count > 1)
+                .map(|info| info.count > 1) // the '1' includes wawa's!
                 .unwrap_or(false)
             {
                 trace!(
@@ -215,7 +215,9 @@ impl EventHandler for Handler {
                             "The message that you've requested the pad of seems to have a malformed wawa prefix",).await;
                         return;
                     };
+                    // TODO: react with question mark on the message to avoid chaining
                     let body = s.split_off(whitespace_idx);
+                    _ = reacted_message.react(ctx.http.clone(), ReactionType::Unicode("❔".to_string())).await;
                     trace!(s, "Got a question mark, all ok!");
                     send_message(
                         *command_message,
