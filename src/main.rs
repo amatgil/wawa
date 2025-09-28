@@ -178,7 +178,7 @@ impl EventHandler for Handler {
                         Ok(()) => trace!("Message deleted (command does not exist anymore, so we're accepting deletion command)"),
                         Err(error) => trace!(?error, "Error deleting message"),
                     }
-                } else if is_question_mark(q) {
+                } else if is_question_mark(&reaction.emoji) {
                     send_message(reacted_message, &ctx.http, "The message you've asked me to fetch a pad-link for seems to not have its source message available :(").await
                 }
                 return;
