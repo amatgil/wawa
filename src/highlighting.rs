@@ -215,7 +215,7 @@ impl Span {
             };
         }
 
-        if matches!(prim.class(), PrimClass::Stack | PrimClass::Debug)
+        if matches!(prim.class(), PrimClass::Arguments | PrimClass::Debug)
             || prim == Primitive::Identity
         {
             return Self::StackFun;

@@ -17,7 +17,7 @@ Your friendly neighbourhood uiua bot!
 Run with either `w!` or `wawa!`
 
 You can delete any wawa message (that you triggered, or whose original message was deleted) by reacting with :x:.
-You can get the pad link of any wawa message by reaction with :question: to wawa's response.
+You can get the pad link of any wawa message by reaction with :grey_question: to wawa's response.
 
 All attachments that you include in your message or that exist in the message you're replying to will be included in the internal filesystem and as bindings, as well as the text in said replied message. Their naming scheme is:
 - `I,{N}`: Attachments in the original message
