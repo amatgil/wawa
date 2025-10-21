@@ -32,7 +32,6 @@ async fn handle_message(ctx: Context, msg: Message) {
     let contents = msg.content_safe(ctx.cache.clone()).clone();
     let trimmed = contents.trim();
     trace!(
-        text = trimmed,
         srv = msg
             .guild_id
             .map(|g| g.to_string())
