@@ -14,7 +14,7 @@ pub const MAX_MSG_LEN: usize = 1850;
 const HELP_MESSAGE: &str = r#"# wawa
 Your friendly neighbourhood uiua bot!
 
-Run with either `w!` or `wawa!`
+Call upon it with either `w!` or `W!`.
 
 You can delete any wawa message (that you triggered, or whose original message was deleted) by reacting with :x:.
 You can get the pad link of any wawa message by reaction with :grey_question: to wawa's response.
