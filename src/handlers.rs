@@ -358,8 +358,8 @@ pub fn strip_wawa_prefix(text: &str) -> Option<String> {
     let prefixes = [
         "w!",
         "W!",
-        "Wawa!",
-        "wawa!",
+        //"Wawa!", // these intersect with the toki pona usage of the word!
+        //"wawa!",
         &format!("@{}", *SELF_HANDLE),
         &format!("<@{}>", *SELF_ID),
         &format!("<@&{}>", *SELF_ID), /* Self-role */
