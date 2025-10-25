@@ -53,6 +53,7 @@ quite limited, discord does not offer much of the ansi spec).
 - [X] Show stdout in `w!run`
 - [X] inline `fmt`
 - [ ] Rerun code if source was edited
+- [ ] Use Uiua::take_stack_lines for grouping outputs based on line
 
 # Server install
 Place this under `/etc/systemd/system/wawa.service` to make it a daemon:
