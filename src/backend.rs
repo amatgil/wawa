@@ -2,6 +2,7 @@
 
 use std::{
     any::Any,
+    borrow::Cow,
     collections::HashMap,
     io::Cursor,
     path::{Path, PathBuf},
@@ -9,7 +10,7 @@ use std::{
     time::Duration,
 };
 
-use uiua::{now, Report, SysBackend, EXAMPLE_TXT, EXAMPLE_UA};
+use uiua::{now, BigConstant, Report, SysBackend, EXAMPLE_TXT, EXAMPLE_UA};
 
 static START_TIME: OnceLock<f64> = OnceLock::new();
 
@@ -149,5 +150,17 @@ impl SysBackend for NativisedWebBackend {
             .keys()
             .map(|p| p.to_string_lossy().to_string())
             .collect())
+    }
+    fn big_constant(&self, key: BigConstant) -> Result<Cow<'static, [u8]>, String> {
+        Ok(Cow::Borrowed(match key {
+            BigConstant::Uiua386 => include_bytes!("../assets/Uiua386.ttf"),
+            BigConstant::Elevation => include_bytes!("../assets/elevation.webp"),
+            BigConstant::BadAppleGif => {
+                return Err(
+                    "The Bad Apple gif is too large to be decoded/transmitted properly".to_string(),
+                )
+            }
+            BigConstant::Amen => include_bytes!("../assets/amen-break.wav"),
+        }))
     }
 }

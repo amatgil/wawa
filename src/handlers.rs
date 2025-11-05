@@ -322,7 +322,10 @@ pub async fn send_message_advanced(msg: Message, http: &Arc<Http>, builder: Crea
 pub fn strip_triple_ticks(mut s: &str) -> &str {
     s = s.trim();
     s = s.strip_prefix("```").unwrap_or(s);
+    s = s.strip_prefix("\n").unwrap_or(s);
     s = s.strip_prefix("uiua").unwrap_or(s);
+
+    s = s.strip_suffix("\n").unwrap_or(s);
     s = s.strip_suffix("```").unwrap_or(s);
     s
 }
