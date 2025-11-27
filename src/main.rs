@@ -165,6 +165,13 @@ impl EventHandler for Handler {
             }
         };
 
+        // Botness as a proxy for wawa
+        // TODO: Actually check proper authorship
+        if !reacted_message.author.bot {
+            trace!("Question mark was not to a bot message");
+            return;
+        }
+
         let command_message = match reacted_message.clone().referenced_message {
             Some(cm) => cm,
             None => {
@@ -207,7 +214,7 @@ impl EventHandler for Handler {
                         send_message(
                             *command_message,
                             &ctx.http,
-                            "The message that you've requested the pad of seems to have a malformed wawa prefix",).await;
+                            "The message that you've requested the pad of seems to have a malformed wawa prefix (it must be followed by arguments)",).await;
                         return;
                     };
                     let body = s.split_off(whitespace_idx);
