@@ -270,8 +270,14 @@ fn print_docs(emojis: &[Emoji], line: &PrimDocLine) -> String {
 }
 
 pub fn format_and_get_pad_link(code: &str) -> String {
+    const THE_LINK: &str = "<https://www.youtube.com/watch?v=dQw4w9WgXcQ>";
+
     let encoded = URL_SAFE.encode(code);
-    let link = format!("https://www.uiua.org/pad?src={}__{encoded}", uiua::VERSION);
+    let link = if code.trim().is_empty() {
+        THE_LINK.to_string()
+    } else {
+        format!("https://www.uiua.org/pad?src={}__{encoded}", uiua::VERSION)
+    };
 
     let result = format!("[pad]({link}) for: {}", highlight_code(&code));
 

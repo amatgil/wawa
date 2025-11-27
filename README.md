@@ -1,5 +1,5 @@
 # wawa
-A relatively basic discord bot for prettifying code
+A fully fledged uiua-capable discord bot.
 
 It is run with prefix commands: `wawa!<cmd> <args>` or `w!<cmd> <args>`
 

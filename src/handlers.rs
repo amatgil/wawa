@@ -25,7 +25,7 @@ All attachments that you include in your message or that exist in the message yo
 - `S`: The text in the referenced message
 - Otherwise, the original name will be used
 For example, typing `w!r abs S` will uppercase the replied message's text, or error with `Missing binding` if the message isn't a reply.
-Typing `w!r not &fras "somename"` will attempt to negate the contents of the attachemnt called "somename" (both in your message and the referenced one).
+Typing `w!r not &fras "somename"` will attempt to negate the contents of the attachment called "somename" (both in your message and the referenced one).
 
 Available commands:
 - [`ping`]: pong

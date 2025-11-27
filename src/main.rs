@@ -210,21 +210,31 @@ impl EventHandler for Handler {
                 Some(mut s) => {
                     // This handling fails on code that doesn't have a command (e.g. `w! +1 1`), but that should be so rare that it's fine
                     let Some(whitespace_idx) = s.char_indices().filter(|(_i, c)| c.is_whitespace()).next().map(|(i, c)| i+c.len_utf8()) else {
-                        trace!(s, "Replying to message with malformed prefix");
-                        send_message(
-                            *command_message,
-                            &ctx.http,
-                            "The message that you've requested the pad of seems to have a malformed wawa prefix (it must be followed by arguments)",).await;
-                        return;
+                        trace!(s, "Replying to message with possibly-malformed prefix");
+                        if ["h", "v", "ver", "version", "d", "docs", "e", "emojify"].contains(&s.trim()) {
+                            _ = reacted_message.react(ctx.http.clone(), ReactionType::Unicode("❔".to_string())).await;
+                            send_message(*command_message, &ctx.http, "You cannot get a pad link to the help message, silly").await
+                        } else {
+                            send_message(
+                                *command_message,
+                                &ctx.http,
+                                "The message that you've requested the pad of seems to have a malformed wawa prefix (it must be followed by arguments)",).await
+                        }
+                            return;
                     };
+
                     let body = s.split_off(whitespace_idx);
                     _ = reacted_message.react(ctx.http.clone(), ReactionType::Unicode("❔".to_string())).await;
                     trace!(s, "Got a question mark, all ok!");
-                    send_message(
-                        *command_message,
-                        &ctx.http,
-                        &format_and_get_pad_link(body.trim()),
-                    ).await
+                    if ["h", "v", "ver", "version", "d", "docs", "e", "emojify"].contains(&s.trim()) {
+                        send_message(*command_message, &ctx.http, "You cannot get a pad link to non-code wawa messages, silly").await
+                    } else {
+                        send_message(
+                            *command_message,
+                            &ctx.http,
+                            &format_and_get_pad_link(body.trim()),
+                        ).await
+                    }
                 }
                 None =>  {
                     send_message(
