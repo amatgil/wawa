@@ -235,13 +235,14 @@ impl EventHandler for Handler {
                 }
             }
         } else if reaction.emoji == ReactionType::Unicode("❌".to_string()) {
-            trace!("Emoji is cross, proceeding to deletion");
-            match reacted_message.delete(&ctx.http).await {
-                Ok(()) => trace!("Message deleted"),
-                Err(error) => trace!(?error, "Error deleting message"),
-            }
+            trace!("Got cross, checking authorization");
             if Some(command_message.author.id) == reaction.user_id {
                 // Authorized user sent it!
+                trace!("Emoji is cross and we'er authorized, proceeding to deletion");
+                match reacted_message.delete(&ctx.http).await {
+                    Ok(()) => trace!("Message deleted"),
+                    Err(error) => trace!(?error, "Error deleting message"),
+                }
                 trace!(
                     user = command_message.author.name,
                     "Authorized emoji detected on wawa message"
