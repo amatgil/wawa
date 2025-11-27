@@ -280,13 +280,17 @@ pub fn format_and_get_pad_link(code: &str) -> String {
     };
 
     let result = format!("[pad]({link}) for: {}", highlight_code(&code));
+    let shortened = format!("[pad]({link})");
 
     if result.len() <= MAX_MSG_LEN {
         trace!("Sending pad message normally");
         result
-    } else {
+    } else if shortened.len() <= MAX_MSG_LEN {
         trace!("Pad message was too long, skipping source");
-        format!("[pad]({link})")
+        shortened
+    } else {
+        trace!("Pad message was too long, period");
+        "The resulting link does not fit in a discord message! :(".to_string()
     }
 }
 
