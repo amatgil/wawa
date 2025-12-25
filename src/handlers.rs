@@ -19,14 +19,14 @@ Call upon it with either `w!` or `W!`.
 You can delete any wawa message (that you triggered, or whose original message was deleted) by reacting with :x:.
 You can get the pad link of any wawa message by reaction with :grey_question: to wawa's response.
 
-All attachments that you include in your message or that exist in the message you're replying to will be included in the internal filesystem and as bindings, as well as the text in said replied message. Their naming scheme is:
+Attachments in your message (or the message you're replying to, as well as that message's text) are available as bindings with the following names:
 - `I,{N}`: Attachments in the original message
 - `R,{N}`: Attachments in the referenced message
 - `S`: The text in the referenced message
 - Otherwise, the original name will be used
 For example, typing `w!r abs S` will uppercase the replied message's text, or error with `Missing binding` if the message isn't a reply.
-Typing `w!r not &fras "somename"` will attempt to negate the contents of the attachment called "somename" (both in your message and the referenced one).
-
+(Note that they will also be included in the internal (ephemeral) filesystem with their original names: typing `w!r not &fras "somename"` will attempt to negate the contents of the attachment called "somename" (both in your message and the referenced one).
+    
 Available commands:
 - [`ping`]: pong
 - [`h` `help`]: display this text!
