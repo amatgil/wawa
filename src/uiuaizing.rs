@@ -189,6 +189,10 @@ pub async fn run_uiua(
 pub async fn get_docs(f: &str, ctx: Context, msg: Message) -> String {
     let emojis = get_emojis(msg.guild_id, &ctx.http).await;
 
+    if f.trim().is_empty() {
+        return "Documentation is [here](https://uiua.org/docs/)".to_string();
+    }
+
     match Primitive::from_format_name(f)
         .or_else(|| Primitive::from_glyph(f.chars().next().unwrap_or_default()))
         .or_else(|| Primitive::from_name(f))
