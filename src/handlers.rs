@@ -181,6 +181,7 @@ pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
 
 #[instrument(skip(msg, http))]
 pub async fn handle_show(msg: Message, http: Arc<Http>, code: &str) {
+    let code = strip_triple_ticks(code.trim());
     trace!(user = msg.author.name, ?code, "Running show handler");
 
     let Some((output, attachments)) = get_output(msg.clone(), http.clone(), code).await else {
