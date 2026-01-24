@@ -303,8 +303,6 @@ pub async fn get_output(
     http: Arc<Http>,
     code: &str,
 ) -> Option<(String, Vec<CreateAttachment>)> {
-    let code = strip_triple_ticks(code.trim());
-
     if code.contains("```") {
         info!(code = %code, "Input contained backticks, disallowing");
         send_message(

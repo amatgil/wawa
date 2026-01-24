@@ -26,7 +26,7 @@ Attachments in your message (or the message you're replying to, as well as that 
 - Otherwise, the original name will be used
 For example, typing `w!r abs S` will uppercase the replied message's text, or error with `Missing binding` if the message isn't a reply.
 (Note that they will also be included in the internal (ephemeral) filesystem with their original names: typing `w!r not &fras "somename"` will attempt to negate the contents of the attachment called "somename" (both in your message and the referenced one).
-    
+
 Available commands:
 - [`ping`]: pong
 - [`h` `help`]: display this text!
@@ -100,22 +100,26 @@ pub async fn handle_help(msg: Message, http: Arc<Http>) {
 
 #[instrument(skip(msg, http))]
 pub async fn handle_fmt(msg: Message, http: Arc<Http>, code: &str) {
+    let code = strip_triple_ticks(code.trim());
     trace!(user = msg.author.name, ?code, "Running fmt handler");
     send_message(msg, &http, &highlight_code(strip_triple_ticks(code.trim()))).await
 }
 
 #[instrument(skip(msg, http))]
 pub async fn handle_pad(msg: Message, http: Arc<Http>, code: &str) {
+    let code = strip_triple_ticks(code.trim());
     trace!(user = msg.author.name, ?code, "Running pad handler");
     send_message(msg, &http, &format_and_get_pad_link(code.trim())).await;
 }
 
 #[instrument(skip(msg, http))]
 pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
+    let code = strip_triple_ticks(code.trim());
+
     let Some((output, attachments)) = get_output(msg.clone(), http.clone(), code).await else {
         return;
     };
-    let source = highlight_code(code.trim());
+    let source = highlight_code(code);
 
     // Prepare output
     let result = if output.contains("```") {
@@ -323,10 +327,13 @@ pub fn strip_triple_ticks(mut s: &str) -> &str {
     s = s.trim();
     s = s.strip_prefix("```").unwrap_or(s);
     s = s.strip_prefix("\n").unwrap_or(s);
-    s = s.strip_prefix("uiua").unwrap_or(s);
+    if s.to_ascii_lowercase().starts_with("uiua") {
+        s = &s["uiua".len()..];
+    }
 
     s = s.strip_suffix("\n").unwrap_or(s);
     s = s.strip_suffix("```").unwrap_or(s);
+    s = s.strip_suffix("\n").unwrap_or(s);
     s
 }
 
