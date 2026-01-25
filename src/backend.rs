@@ -27,6 +27,10 @@ impl NativisedWebBackend {
         let t = self.stdout.lock().unwrap();
         t.clone()
     }
+    pub fn current_stderr(&self) -> String {
+        let t = self.stderr.lock().unwrap();
+        t.clone()
+    }
 }
 
 impl Default for NativisedWebBackend {
@@ -91,7 +95,8 @@ impl SysBackend for NativisedWebBackend {
         Ok(())
     }
     fn print_str_stderr(&self, s: &str) -> Result<(), String> {
-        self.stderr.lock().unwrap().push_str(s);
+        let mut stderr = self.stderr.lock().unwrap();
+        stderr.push_str(s);
         Ok(())
     }
     fn print_str_trace(&self, s: &str) {

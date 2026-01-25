@@ -75,7 +75,7 @@ impl From<uiua::Value> for OutputItem {
     }
 }
 
-/// Returns (stdout, top-most elements of stack)
+/// Returns (stdout, stderr, top-most elements of stack)
 pub async fn run_uiua(
     code: &str,
     attachments: &[Attachment],
@@ -83,7 +83,7 @@ pub async fn run_uiua(
     text_of_refd: Option<&str>,
     // Attachments of the message that this command is in reply to
     attachments_of_refd: Option<&[Attachment]>,
-) -> Result<(Vec<OutputItem>, Vec<OutputItem>), String> {
+) -> Result<(Vec<OutputItem>, String, Vec<OutputItem>), String> {
     const MAX_ATTACHMENT_IMAGE_PIXEL_COUNT: u32 = 2048 * 2048;
 
     trace!(code, "Starting to execute uiua code");
@@ -161,14 +161,13 @@ pub async fn run_uiua(
             trace!(code, "Code ran successfully");
             let stack = runtime.take_stack();
             let stack_len = stack.len();
-            let stdout: Vec<_> = runtime
-                .take_backend::<NativisedWebBackend>()
-                .unwrap()
-                .current_stdout()
-                .to_vec();
+            let backend = runtime.take_backend::<NativisedWebBackend>().unwrap();
+            let stdout = backend.current_stdout();
+            let stderr = backend.current_stderr();
 
             Ok((
                 stdout,
+                stderr,
                 stack
                     .into_iter()
                     .take(MAX_STACK_VALS_DISPLAYED)
@@ -328,10 +327,9 @@ pub async fn get_output(
     let mut output = String::new();
     let mut attachments = Vec::new();
     match result.await {
-        Ok((stdout, result)) => {
-            let there_is_stdout = !stdout.is_empty();
+        Ok((stdout, stderr, result)) => {
             let out_is_one_stdout = stdout.len() == 1 && result.is_empty();
-            if there_is_stdout {
+            if !stdout.is_empty() || !stderr.is_empty() {
                 let (output_stdout, mut attach_stdout) = stdout.into_iter().fold(
                     (String::new(), Vec::new()),
                     |(mut o_acc, attachments), item| match item {
@@ -386,6 +384,9 @@ pub async fn get_output(
                         }
                     },
                 );
+                output.push_str("stdout:\n");
+                output.push_str(&stderr);
+                output.push_str("\nstderr:\n");
                 output.push_str(&output_stdout);
                 attachments.append(&mut attach_stdout);
             } else {
