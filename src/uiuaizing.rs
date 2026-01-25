@@ -163,7 +163,12 @@ pub async fn run_uiua(
             let stack_len = stack.len();
             let backend = runtime.take_backend::<NativisedWebBackend>().unwrap();
             let stdout = backend.current_stdout();
-            let stderr = backend.current_stderr();
+            let stderr = {
+                let mut e = backend.current_stderr();
+                e.push('\n');
+                e.push_str(&backend.trace.lock().unwrap());
+                e
+            };
 
             Ok((
                 stdout,
@@ -329,7 +334,7 @@ pub async fn get_output(
     match result.await {
         Ok((stdout, stderr, result)) => {
             let out_is_one_stdout = stdout.len() == 1 && result.is_empty();
-            if !stdout.is_empty() || !stderr.is_empty() {
+            if !stdout.is_empty() || !stderr.trim().is_empty() {
                 let (output_stdout, mut attach_stdout) = stdout.into_iter().fold(
                     (String::new(), Vec::new()),
                     |(mut o_acc, attachments), item| match item {
