@@ -302,6 +302,76 @@ pub fn format_and_get_pad_link(code: &str) -> String {
     }
 }
 
+// Takes item and places it into 'output' or 'attachments' as required
+// (This is a refactoring of old code so it's super spaghetti)
+fn return_item(
+    mut output: String,
+    attachments: Vec<CreateAttachment>,
+    item: OutputItem,
+    out_is_one_stdout: bool,
+) -> (String, Vec<CreateAttachment>) {
+    match item {
+        OutputItem::String(s) => {
+            let _ = writeln!(output, "{}", s);
+            (output, attachments)
+        }
+        OutputItem::Svg(s) => update_stdout_output(
+            output,
+            attachments,
+            s.as_bytes(),
+            None,
+            "svg",
+            "svg",
+            out_is_one_stdout,
+        ),
+        OutputItem::Image(bytes, label) => update_stdout_output(
+            output,
+            attachments,
+            &bytes,
+            label,
+            "image",
+            "png",
+            out_is_one_stdout,
+        ),
+        OutputItem::Gif(bytes, label) => update_stdout_output(
+            output,
+            attachments,
+            &bytes,
+            label,
+            "gif",
+            "gif",
+            out_is_one_stdout,
+        ),
+        OutputItem::Audio(bytes, label) => update_stdout_output(
+            output,
+            attachments,
+            &bytes,
+            label,
+            "audio",
+            "ogg",
+            out_is_one_stdout,
+        ),
+        OutputItem::Continuation(n) => {
+            let _ = writeln!(output, "<{n} more item{}>", if n == 1 { "" } else { "s" });
+            (output, attachments)
+        }
+        _ => {
+            let _ = writeln!(output, "<Unimplemented type>",);
+            (output, attachments)
+        }
+    }
+}
+
+fn process_output_items(
+    v: Vec<OutputItem>,
+    out_is_one_stdout: bool,
+) -> (String, Vec<CreateAttachment>) {
+    v.into_iter().fold(
+        (String::new(), Vec::new()),
+        |(output, attachments), item| return_item(output, attachments, item, out_is_one_stdout),
+    )
+}
+
 pub async fn get_output(
     msg: Message,
     http: Arc<Http>,
@@ -329,135 +399,34 @@ pub async fn get_output(
         attachments_of_refd.as_deref(),
     );
 
-    let mut output = String::new();
-    let mut attachments = Vec::new();
     match result.await {
         Ok((stdout, stderr, result)) => {
             let out_is_one_stdout = stdout.len() == 1 && result.is_empty();
             if !stdout.is_empty() || !stderr.trim().is_empty() {
-                let (output_stdout, mut attach_stdout) = stdout.into_iter().fold(
-                    (String::new(), Vec::new()),
-                    |(mut o_acc, attachments), item| match item {
-                        OutputItem::String(s) => {
-                            let _ = writeln!(o_acc, "{}", s);
-                            (o_acc, attachments)
-                        }
-                        OutputItem::Svg(s) => update_stdout_output(
-                            o_acc,
-                            attachments,
-                            s.as_bytes(),
-                            None,
-                            "svg",
-                            "svg",
-                            out_is_one_stdout,
-                        ),
-                        OutputItem::Image(bytes, label) => update_stdout_output(
-                            o_acc,
-                            attachments,
-                            &bytes,
-                            label,
-                            "image",
-                            "png",
-                            out_is_one_stdout,
-                        ),
-                        OutputItem::Gif(bytes, label) => update_stdout_output(
-                            o_acc,
-                            attachments,
-                            &bytes,
-                            label,
-                            "gif",
-                            "gif",
-                            out_is_one_stdout,
-                        ),
-                        OutputItem::Audio(bytes, label) => update_stdout_output(
-                            o_acc,
-                            attachments,
-                            &bytes,
-                            label,
-                            "audio",
-                            "ogg",
-                            out_is_one_stdout,
-                        ),
-                        OutputItem::Continuation(n) => {
-                            let _ =
-                                writeln!(o_acc, "<{n} more item{}>", if n == 1 { "" } else { "s" });
-                            (o_acc, attachments)
-                        }
-                        _ => {
-                            let _ = writeln!(o_acc, "<Unimplemented type>",);
-                            (o_acc, attachments)
-                        }
-                    },
-                );
-                output.push_str("stdout:\n");
-                output.push_str(&stderr);
+                let (stack_output, mut stack_attachments) =
+                    process_output_items(result, out_is_one_stdout);
+                let (stdout_output, mut stdout_attachments) =
+                    process_output_items(stdout, out_is_one_stdout);
+
+                let (mut output, mut attachments) = (String::new(), Vec::new());
+
+                // NOTE: This doesn't distinguish stack-sourced vs stdout-sourced attachments, which might be bad
+                output.push_str("stack:\n");
+                output.push_str(&stack_output);
+                attachments.append(&mut stack_attachments);
+
+                output.push_str("\nstdout:\n");
+                output.push_str(&stdout_output);
+                attachments.append(&mut stdout_attachments);
+
                 output.push_str("\nstderr:\n");
-                output.push_str(&output_stdout);
-                attachments.append(&mut attach_stdout);
+                output.push_str(&stderr);
+
+                Some((output, attachments))
             } else {
-                let (output_stack, mut attach_stack) = result.into_iter().fold(
-                    (String::new(), Vec::new()),
-                    |(mut output, attachments), item| match item {
-                        OutputItem::String(s) => {
-                            let _ = writeln!(output, "{}", s);
-                            (output, attachments)
-                        }
-                        OutputItem::Svg(s) => update_stdout_output(
-                            output,
-                            attachments,
-                            s.as_bytes(),
-                            None,
-                            "svg",
-                            "svg",
-                            out_is_one_stdout,
-                        ),
-                        OutputItem::Image(bytes, label) => update_stdout_output(
-                            output,
-                            attachments,
-                            &bytes,
-                            label,
-                            "image",
-                            "png",
-                            out_is_one_stdout,
-                        ),
-                        OutputItem::Gif(bytes, label) => update_stdout_output(
-                            output,
-                            attachments,
-                            &bytes,
-                            label,
-                            "gif",
-                            "gif",
-                            out_is_one_stdout,
-                        ),
-                        OutputItem::Audio(bytes, label) => update_stdout_output(
-                            output,
-                            attachments,
-                            &bytes,
-                            label,
-                            "audio",
-                            "ogg",
-                            out_is_one_stdout,
-                        ),
-                        OutputItem::Continuation(n) => {
-                            let _ = writeln!(
-                                output,
-                                "<{n} more item{}>",
-                                if n == 1 { "" } else { "s" }
-                            );
-                            (output, attachments)
-                        }
-                        _ => {
-                            let _ = writeln!(output, "<Unimplemented type>",);
-                            (output, attachments)
-                        }
-                    },
-                );
-                output.push_str(&output_stack);
-                attachments.append(&mut attach_stack);
+                Some(process_output_items(result, out_is_one_stdout))
             }
         }
-        Err(err) => output = err,
-    };
-
-    Some((output, attachments))
+        Err(err) => Some((err, Vec::new())),
+    }
 }
