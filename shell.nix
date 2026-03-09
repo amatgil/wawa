@@ -14,16 +14,17 @@ pkgs.mkShell {
     sqlx-cli
     git
     openssl.dev
+    openssl
     systemdLibs.dev
-    libiconv openssl pkg-config
+    libiconv pkg-config
   ];
 
   # Environment variables
   env = {
     RUST_BACKTRACE = "1";
     RUST_SRC_PATH = "${pkgs.rustPlatform.rustLibSrc}";
-    PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig";
-    LD_LIBRARY_PATH = lib.makeLibraryPath [ pkgs.openssl ];
+    # PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig";
+    # LD_LIBRARY_PATH = lib.makeLibraryPath [ pkgs.openssl ];
   };
 
 }
