@@ -402,30 +402,44 @@ pub async fn get_output(
     match result.await {
         Ok((stdout, stderr, result)) => {
             let out_is_one_stdout = stdout.len() == 1 && result.is_empty();
-            if !stdout.is_empty() || !stderr.trim().is_empty() {
-                let (stack_output, mut stack_attachments) =
-                    process_output_items(result, out_is_one_stdout);
-                let (stdout_output, mut stdout_attachments) =
-                    process_output_items(stdout, out_is_one_stdout);
+            let (stack_output, mut stack_attachments) =
+                process_output_items(result, out_is_one_stdout);
+            let (stdout_output, mut stdout_attachments) =
+                process_output_items(stdout, out_is_one_stdout);
 
-                let (mut output, mut attachments) = (String::new(), Vec::new());
+            // NOTE: This doesn't distinguish stack-sourced vs stdout-sourced attachments, which might be bad
+            let (mut output, mut attachments) = (String::new(), Vec::new());
+            attachments.append(&mut stack_attachments);
+            attachments.append(&mut stdout_attachments);
 
-                // NOTE: This doesn't distinguish stack-sourced vs stdout-sourced attachments, which might be bad
-                output.push_str("stack:\n");
-                output.push_str(&stack_output);
-                attachments.append(&mut stack_attachments);
-
-                output.push_str("\nstdout:\n");
-                output.push_str(&stdout_output);
-                attachments.append(&mut stdout_attachments);
-
-                output.push_str("\nstderr:\n");
-                output.push_str(&stderr);
-
-                Some((output, attachments))
-            } else {
-                Some(process_output_items(result, out_is_one_stdout))
+            match (
+                !stack_output.trim().is_empty(),
+                !stdout_output.trim().is_empty(),
+                !stderr.trim().is_empty(),
+            ) {
+                (false, false, false) => output.push_str("<No output>"),
+                (true, false, false) => output.push_str(&stack_output),
+                (false, true, false) => output.push_str(&stdout_output),
+                (false, false, true) => output.push_str(&stderr),
+                (st, out, err) => {
+                    if st {
+                        output.push_str("stack:\n");
+                        output.push_str(&stack_output);
+                        output.push_str("\n");
+                    }
+                    if out {
+                        output.push_str("stdout:\n");
+                        output.push_str(&stdout_output);
+                        output.push_str("\n");
+                    }
+                    if err {
+                        output.push_str("stderr:\n");
+                        output.push_str(&stderr);
+                    }
+                }
             }
+
+            Some((output, attachments))
         }
         Err(err) => Some((err, Vec::new())),
     }
