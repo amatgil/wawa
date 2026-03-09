@@ -3,7 +3,7 @@ use tracing::trace;
 use uiua::{
     format::{format_str, FormatConfig},
     lsp::BindingDocsKind,
-    PrimClass, Primitive, SpanKind, Subscript,
+    PrimClass, Primitive, SpanKind, Subscript, SubscriptToken,
 };
 
 use crate::find_emoji;
@@ -231,7 +231,7 @@ impl Span {
             .unwrap_or_default()
     }
 
-    fn from_prim_sub(prim: Option<Primitive>, sub: Option<Subscript>) -> Self {
+    fn from_prim_sub(prim: Option<Primitive>, sub: Option<SubscriptToken>) -> Self {
         let args = prim
             .and_then(|prim| prim.subscript_sig(sub.as_ref()))
             .map(|sig| sig.args());
