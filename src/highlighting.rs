@@ -329,8 +329,7 @@ pub async fn emojificate(code: &str, msg: Message, ctx: Context) -> String {
                         _ => None,
                     })
                     .collect(),
-                SpanKind::Delimiter => find_emoji(&emojis, "binding"),
-                SpanKind::Whitespace => Some(text.to_string()),
+                SpanKind::Delimiter | SpanKind::Whitespace => Some(text.to_string()),
                 _ => None,
             }
             .unwrap_or_else(|| format!("`{}`", text.trim()));
