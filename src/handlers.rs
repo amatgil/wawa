@@ -326,10 +326,13 @@ pub async fn send_message_advanced(msg: Message, http: &Arc<Http>, builder: Crea
 
 pub fn strip_triple_ticks(mut s: &str) -> &str {
     s = s.trim();
-    s = s.strip_prefix("```").unwrap_or(s);
-    s = s.strip_prefix("\n").unwrap_or(s);
-    if s.to_ascii_lowercase().starts_with("uiua") {
-        s = &s["uiua".len()..];
+    if let Some(rest) = s.strip_prefix("```uiua") {
+        s = rest.trim();
+    } else if let Some(rest) = s.strip_prefix("```ua") {
+        s = rest.trim();
+    } else {
+        s = s.strip_prefix("```").unwrap_or(s).trim();
+        s = s.strip_prefix("\n").unwrap_or(s).trim();
     }
 
     s = s.strip_suffix("\n").unwrap_or(s);
