@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{convert::identity, sync::Arc};
 
 use crate::*;
 use serenity::all::{
@@ -32,11 +32,12 @@ Available commands:
 - [`h` `help`]: display this text!
 - [`v` `ver` `version`]: display uiua version used by the rest of commands
 - [`f` `fmt` `format`]: run the formatter
+- [`e` `emojify`]: converts the given code to discord emoji as best as possible
 - [`p` `pad`]: format and generate a link to the pad
 - [`d` `docs`]: show the first paragraph or so of the specified function
-- [`r` `run`]: format and run the code, showing the source, stdout and final stack
+- [`a` `add` `append`]: append your message to the contents of whichever you're replying to, and run it
 - [`s` `show`]: like run, but only display stdout (or the stack if there is no stdout)
-- [`e` `emojify`]: converts the given code to discord emoji as best as possible
+- [`r` `run`]: format and run the code, showing the source, stdout and final stack
 
 Examples:
 
@@ -225,6 +226,50 @@ pub async fn handle_show(msg: Message, http: Arc<Http>, code: &str) {
         .await;
     }
 }
+
+#[instrument(skip(msg, http))]
+pub async fn handle_append(msg: Message, http: Arc<Http>, to_append: &str) {
+    const POSSIBLE_REPLY_PREFIXES_TO: [&str; 4] = ["w!show", "w!s", "w!run", "w!r"]; // order is relevant, don't be dumb
+    let Some(parent_msg) = &msg.referenced_message else {
+        send_message(
+            msg,
+            &http,
+            "'append' must be used in reply to a message! (that contains either 'show' or 'run')",
+        )
+        .await;
+        return;
+    };
+    let parent_content = &parent_msg.content;
+
+    let mut start_positions = POSSIBLE_REPLY_PREFIXES_TO
+        .iter()
+        .enumerate()
+        .map(|(index_in_prefixes, t)| {
+            parent_content
+                .find(t)
+                .map(|pos_in_parent| (t, pos_in_parent, index_in_prefixes))
+        })
+        .collect::<Vec<_>>();
+    start_positions.sort(); // In case there's 'w!s' inside a uiua string or swagever. take the first Some one
+
+    let Some(which_prefix) = start_positions.into_iter().find_map(identity) else {
+        send_message(
+            msg,
+            &http,
+            "'append' must be used in reply to a 'show' or 'run' message!",
+        )
+        .await;
+        return;
+    };
+    let body_of_parent = &parent_content[which_prefix.1 + which_prefix.0.len()..];
+    let total = format!("{body_of_parent}\n{to_append}");
+    if which_prefix.2 <= 1 {
+        handle_show(msg, http, &total).await;
+    } else {
+        handle_run(msg, http, &total).await;
+    }
+}
+
 #[instrument(skip(msg, ctx))]
 pub async fn handle_docs(msg: Message, ctx: Context, code: &str) {
     trace!(user = msg.author.name, ?code, "Running docs handler");
