@@ -9,7 +9,7 @@ use std::fmt::Write;
 use std::sync::LazyLock;
 use tracing::{debug, error, info, instrument, trace};
 
-pub const MAX_MSG_LEN: usize = 1850;
+pub const MAX_MSG_LEN: usize = 1900;
 
 const HELP_MESSAGE: &str = r#"# wawa
 Your friendly neighbourhood uiua bot!
@@ -19,17 +19,24 @@ Call upon it with either `w!` or `W!`.
 You can delete any wawa message (that you triggered, or whose original message was deleted) by reacting with :x:.
 You can get the pad link of any wawa message by reaction with :grey_question: to wawa's response.
 
+Show the list of available commands with `w!commands`.
+
 Attachments in your message (or the message you're replying to, as well as that message's text) are available as bindings with the following names:
 - `I,{N}`: Attachments in the original message
 - `R,{N}`: Attachments in the referenced message
 - `S`: The text in the referenced message
 - Otherwise, the original name will be used
 For example, typing `w!r abs S` will uppercase the replied message's text, or error with `Missing binding` if the message isn't a reply.
-(Note that they will also be included in the internal (ephemeral) filesystem with their original names: typing `w!r not &fras "somename"` will attempt to negate the contents of the attachment called "somename" (both in your message and the referenced one).
+(Note that they will also be included in the internal (ephemeral) filesystem with their original names: typing `w!r not&fras"somename"` will negate the contents of the attachment called "somename" (both in your message and the referenced one).
 
-Available commands:
+Ping <@328851809357791232> for any questions or if you want the version to get bumped
+"#;
+
+const COMMANDS_MESSAGE: &str = r#"
+Available wawa commands:
 - [`ping`]: pong
-- [`h` `help`]: display this text!
+- [`h` `help`]: display the help text
+- [`cmd` `commands`]: display this text!
 - [`v` `ver` `version`]: display uiua version used by the rest of commands
 - [`f` `fmt` `format`]: run the formatter
 - [`e` `emojify`]: converts the given code to discord emoji as best as possible
@@ -47,7 +54,6 @@ Examples:
 - `w!run below+ 1 2 3`
 - `w!docs tup`
 
-Ping <@328851809357791232> for any questions or if you want the version to get bumped
 "#;
 
 static MAX_FN_LEN: LazyLock<usize> = LazyLock::new(|| {
@@ -97,6 +103,12 @@ pub async fn handle_version(msg: Message, http: Arc<Http>) {
 pub async fn handle_help(msg: Message, http: Arc<Http>) {
     trace!("Running help handler");
     send_message(msg, &http, HELP_MESSAGE).await
+}
+
+#[instrument(skip_all)]
+pub async fn handle_commands(msg: Message, http: Arc<Http>) {
+    trace!("Running help handler");
+    send_message(msg, &http, COMMANDS_MESSAGE).await
 }
 
 #[instrument(skip(msg, http))]

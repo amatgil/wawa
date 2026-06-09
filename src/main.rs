@@ -69,6 +69,7 @@ async fn handle_message(ctx: Context, msg: Message) {
             "ping" => handle_ping(msg, ctx.http).await,
             "v" | "ver" | "version" => handle_version(msg, ctx.http).await,
             "h" | "help" | "" => handle_help(msg, ctx.http).await,
+            "cmd" | "command" | "commands" => handle_commands(msg, ctx.http).await,
             "f" | "fmt" | "format" => handle_fmt(msg, ctx.http, s[space_idx..].trim()).await,
             "p" | "pad" => handle_pad(msg, ctx.http, s[space_idx..].trim()).await,
             "d" | "doc" | "docs" | "what" => handle_docs(msg, ctx, s[space_idx..].trim()).await,
