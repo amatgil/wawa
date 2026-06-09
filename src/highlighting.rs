@@ -185,7 +185,8 @@ impl From<SpanKind> for Span {
 impl From<Span> for AnsiState {
     fn from(span: Span) -> Self {
         match span {
-            Span::Comment => AnsiColor::Gray.into(),
+            //Span::Comment => AnsiColor::Gray.into(),
+            Span::Comment => AnsiColor::White.into(),
             Span::String => AnsiColor::Cyan.into(),
             Span::Number => AnsiState::from(AnsiColor::Red).bold(),
             Span::Label => AnsiState::from(AnsiColor::White).bold(),

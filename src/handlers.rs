@@ -36,7 +36,7 @@ const COMMANDS_MESSAGE: &str = r#"
 Available wawa commands:
 - [`ping`]: pong
 - [`h` `help`]: display the help text
-- [`cmd` `commands`]: display this text!
+- [`c` `cmd` `commands`]: display this text!
 - [`v` `ver` `version`]: display uiua version used by the rest of commands
 - [`f` `fmt` `format`]: run the formatter
 - [`e` `emojify`]: converts the given code to discord emoji as best as possible
@@ -47,7 +47,6 @@ Available wawa commands:
 - [`r` `run`]: format and run the code, showing the source, stdout and final stack
 
 Examples:
-
 - `w!fmt below+ 1 2 3`
 - `w! fmt below+ 1 2 3`
 - `w!pad below+ 1 2 3`
