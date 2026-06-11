@@ -240,7 +240,38 @@ pub async fn handle_show(msg: Message, http: Arc<Http>, code: &str) {
 
 #[instrument(skip(msg, http))]
 pub async fn handle_append(msg: Message, http: Arc<Http>, to_append: &str) {
-    const POSSIBLE_REPLY_PREFIXES_TO: [&str; 4] = ["w!show", "w!s", "w!run", "w!r"]; // order is relevant, don't be dumb
+    enum PrefixKind {
+        Run,
+        Show,
+        Append,
+    }
+    fn get_body_from(content: &str) -> Option<(String, PrefixKind)> {
+        const POSSIBLE_REPLY_PREFIXES_TO: [&str; 7] = [
+            "w!show", "w!s", "w!run", "w!r", "w!append", "w!append", "w!a",
+        ]; // order is relevant, don't be dumb
+
+        let mut start_positions = POSSIBLE_REPLY_PREFIXES_TO
+            .iter()
+            .enumerate()
+            .map(|(index_in_prefixes, t)| content.find(t).map(|pos| (t, pos, index_in_prefixes)))
+            .collect::<Vec<_>>();
+        start_positions.sort(); // In case there's 'w!s' inside a uiua string or swagever. take the first Some one
+
+        let (prefix, pos_in_content, prefix_index) =
+            start_positions.into_iter().find_map(identity)?;
+        let body = &content[pos_in_content + prefix.len()..];
+
+        let pk = if prefix_index <= 1 {
+            PrefixKind::Run
+        } else if prefix_index <= 3 {
+            PrefixKind::Show
+        } else {
+            PrefixKind::Append
+        };
+
+        Some((body.to_string(), pk))
+    }
+
     let Some(parent_msg) = &msg.referenced_message else {
         send_message(
             msg,
@@ -250,34 +281,70 @@ pub async fn handle_append(msg: Message, http: Arc<Http>, to_append: &str) {
         .await;
         return;
     };
-    let parent_content = &parent_msg.content;
 
-    let mut start_positions = POSSIBLE_REPLY_PREFIXES_TO
-        .iter()
-        .enumerate()
-        .map(|(index_in_prefixes, t)| {
-            parent_content
-                .find(t)
-                .map(|pos_in_parent| (t, pos_in_parent, index_in_prefixes))
-        })
-        .collect::<Vec<_>>();
-    start_positions.sort(); // In case there's 'w!s' inside a uiua string or swagever. take the first Some one
-
-    let Some(which_prefix) = start_positions.into_iter().find_map(identity) else {
+    let Some((parent_body, prefix_kind)) = get_body_from(&parent_msg.content) else {
         send_message(
             msg,
             &http,
-            "'append' must be used in reply to a 'show' or 'run' message!",
+            "'append' must be used in reply to a 'show'/'run'/'append' message!",
         )
         .await;
         return;
     };
-    let body_of_parent = &parent_content[which_prefix.1 + which_prefix.0.len()..];
-    let total = format!("{body_of_parent}\n{to_append}");
-    if which_prefix.2 <= 1 {
-        handle_show(msg, http, &total).await;
-    } else {
-        handle_run(msg, http, &total).await;
+    let total_basic = format!("{parent_body}\n{to_append}");
+    match prefix_kind {
+        PrefixKind::Show => handle_show(msg, http, &total_basic).await,
+        PrefixKind::Run => handle_run(msg, http, &total_basic).await,
+        PrefixKind::Append => {
+            let mut chunks = vec![];
+            let mut curr_msg = Box::new(msg.clone());
+
+            loop {
+                let Some((chain_body, prefix_kind)) = get_body_from(&curr_msg.content) else {
+                    send_message(
+                        msg,
+                        &http,
+                        "append chain seems to be broken (one of the messages isn't a wawa command)",
+                    )
+                    .await;
+                    return;
+                };
+
+                chunks.push(chain_body);
+                match prefix_kind {
+                    PrefixKind::Run => {
+                        chunks.reverse();
+                        let code: String = chunks.join("\n");
+                        return handle_run(msg, http, &code).await;
+                    }
+                    PrefixKind::Show => {
+                        chunks.reverse();
+                        let code: String = chunks.join("\n");
+                        return handle_show(msg, http, &code).await;
+                    }
+                    PrefixKind::Append => {
+                        dbg!(
+                            &curr_msg.content,
+                            &curr_msg.referenced_message.as_ref().map(|m| &m.content)
+                        );
+                        // It says that a message that clearly has a parent does not have a parent
+                        // and i have no idea how to handle this
+                        curr_msg = match curr_msg.referenced_message {
+                            Some(m) => m,
+                            None => {
+                                send_message(
+                                    msg,
+                                    &http,
+                                    "append chain seems to be broken (there's no replied message)",
+                                )
+                                .await;
+                                return;
+                            }
+                        };
+                    }
+                }
+            }
+        }
     }
 }
 
