@@ -240,6 +240,7 @@ pub async fn handle_show(msg: Message, http: Arc<Http>, code: &str) {
 
 #[instrument(skip(msg, http))]
 pub async fn handle_append(msg: Message, http: Arc<Http>, to_append: &str) {
+    #[derive(Clone, Copy, Debug)]
     enum PrefixKind {
         Run,
         Show,
@@ -261,10 +262,10 @@ pub async fn handle_append(msg: Message, http: Arc<Http>, to_append: &str) {
             start_positions.into_iter().find_map(identity)?;
         let body = &content[pos_in_content + prefix.len()..];
 
-        let pk = if prefix_index <= 1 {
-            PrefixKind::Run
-        } else if prefix_index <= 3 {
+        let pk = if (0..=1).contains(&prefix_index) {
             PrefixKind::Show
+        } else if (2..=3).contains(&prefix_index) {
+            PrefixKind::Run
         } else {
             PrefixKind::Append
         };
@@ -323,24 +324,35 @@ pub async fn handle_append(msg: Message, http: Arc<Http>, to_append: &str) {
                         return handle_show(msg, http, &code).await;
                     }
                     PrefixKind::Append => {
-                        dbg!(
-                            &curr_msg.content,
-                            &curr_msg.referenced_message.as_ref().map(|m| &m.content)
-                        );
-                        // It says that a message that clearly has a parent does not have a parent
-                        // and i have no idea how to handle this
-                        curr_msg = match curr_msg.referenced_message {
-                            Some(m) => m,
-                            None => {
-                                send_message(
-                                    msg,
-                                    &http,
-                                    "append chain seems to be broken (there's no replied message)",
-                                )
-                                .await;
+                        curr_msg = if let Some(m) = curr_msg.referenced_message {
+                            m
+                        } else if let Some(reference) = curr_msg.message_reference {
+                            // The referenced_message is only populated one-deep: try to fetch it manually through the id
+                            let Some(msg_id) = reference.message_id else {
+                                send_message(msg, &http, "append chain seems to be broken (reply reference is missing a message ID)", ) .await;
                                 return;
+                            };
+                            match curr_msg.channel_id.message(&http, msg_id).await {
+                                Ok(fetched_msg) => Box::new(fetched_msg),
+                                Err(_) => {
+                                    send_message(
+                                                msg,
+                                                &http,
+                                                "append chain seems to be broken (failed to fetch a chained message through its ID)",
+                                            )
+                                            .await;
+                                    return;
+                                }
                             }
-                        };
+                        } else {
+                            send_message(
+                                        msg,
+                                        &http,
+                                        "append chain seems to be broken (a message that did exist also doesn't exist)",
+                                    )
+                                    .await;
+                            return;
+                        }
                     }
                 }
             }
