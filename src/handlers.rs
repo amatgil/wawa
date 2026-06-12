@@ -273,87 +273,48 @@ pub async fn handle_append(msg: Message, http: Arc<Http>, to_append: &str) {
         Some((body.to_string(), pk))
     }
 
-    let Some(parent_msg) = &msg.referenced_message else {
-        send_message(
-            msg,
-            &http,
-            "'append' must be used in reply to a message! (that contains either 'show' or 'run')",
-        )
-        .await;
-        return;
-    };
+    let mut chunks = vec![];
+    let mut curr_msg = Box::new(msg.clone());
+    loop {
+        let Some((chain_body, prefix_kind)) = get_body_from(&curr_msg.content) else {
+            send_message(
+                msg,
+                &http,
+                "append chain seems to be broken (one of the messages isn't a wawa command)",
+            )
+            .await;
+            return;
+        };
+        chunks.push(chain_body);
 
-    let Some((parent_body, prefix_kind)) = get_body_from(&parent_msg.content) else {
-        send_message(
-            msg,
-            &http,
-            "'append' must be used in reply to a 'show'/'run'/'append' message!",
-        )
-        .await;
-        return;
-    };
-    let total_basic = format!("{parent_body}\n{to_append}");
-    match prefix_kind {
-        PrefixKind::Show => handle_show(msg, http, &total_basic).await,
-        PrefixKind::Run => handle_run(msg, http, &total_basic).await,
-        PrefixKind::Append => {
-            let mut chunks = vec![];
-            let mut curr_msg = Box::new(msg.clone());
-
-            loop {
-                let Some((chain_body, prefix_kind)) = get_body_from(&curr_msg.content) else {
-                    send_message(
-                        msg,
-                        &http,
-                        "append chain seems to be broken (one of the messages isn't a wawa command)",
-                    )
-                    .await;
-                    return;
-                };
-
-                chunks.push(chain_body);
-                match prefix_kind {
-                    PrefixKind::Run => {
-                        chunks.reverse();
-                        let code: String = chunks.join("\n");
-                        return handle_run(msg, http, &code).await;
-                    }
-                    PrefixKind::Show => {
-                        chunks.reverse();
-                        let code: String = chunks.join("\n");
-                        return handle_show(msg, http, &code).await;
-                    }
-                    PrefixKind::Append => {
-                        curr_msg = if let Some(m) = curr_msg.referenced_message {
-                            m
-                        } else if let Some(reference) = curr_msg.message_reference {
-                            // The referenced_message is only populated one-deep: try to fetch it manually through the id
-                            let Some(msg_id) = reference.message_id else {
-                                send_message(msg, &http, "append chain seems to be broken (reply reference is missing a message ID)", ) .await;
-                                return;
-                            };
-                            match curr_msg.channel_id.message(&http, msg_id).await {
-                                Ok(fetched_msg) => Box::new(fetched_msg),
-                                Err(_) => {
-                                    send_message(
-                                                msg,
-                                                &http,
-                                                "append chain seems to be broken (failed to fetch a chained message through its ID)",
-                                            )
-                                            .await;
-                                    return;
-                                }
-                            }
-                        } else {
-                            send_message(
-                                        msg,
-                                        &http,
-                                        "append chain seems to be broken (a message that did exist also doesn't exist)",
-                                    )
-                                    .await;
+        match prefix_kind {
+            PrefixKind::Run => {
+                chunks.reverse();
+                return handle_run(msg, http, &chunks.join("\n")).await;
+            }
+            PrefixKind::Show => {
+                chunks.reverse();
+                return handle_show(msg, http, &chunks.join("\n")).await;
+            }
+            PrefixKind::Append => {
+                curr_msg = if let Some(m) = curr_msg.referenced_message {
+                    m
+                } else if let Some(reference) = curr_msg.message_reference {
+                    // The referenced_message is only populated one-deep: try to fetch it manually through the id
+                    let Some(msg_id) = reference.message_id else {
+                        send_message(msg, &http, "append chain seems to be broken (reply reference is missing a message ID)") .await;
+                        return;
+                    };
+                    match curr_msg.channel_id.message(&http, msg_id).await {
+                        Ok(fetched_msg) => Box::new(fetched_msg),
+                        Err(_) => {
+                            send_message(msg, &http, "append chain seems to be broken (failed to fetch a chained message through its ID)") .await;
                             return;
                         }
                     }
+                } else {
+                    send_message(msg, &http, "append chain seems to be broken (a message that did exist also doesn't exist)") .await;
+                    return;
                 }
             }
         }
