@@ -419,7 +419,7 @@ pub async fn get_output(
                 attachments.is_empty(),
             ) {
                 (true, true, true, true) => output.push_str("<No output>"),
-                (true, true, true, false) => {}
+                (true, true, true, false) => {} // Don't pollute the attachments with '<No output>'
                 (false, true, true, _) => output.push_str(stack_output.trim()),
                 (true, false, true, _) => output.push_str(stdout_output.trim()),
                 (true, true, false, _) => output.push_str(stderr.trim()),
