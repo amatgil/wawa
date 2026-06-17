@@ -420,23 +420,23 @@ pub async fn get_output(
             ) {
                 (true, true, true, true) => output.push_str("<No output>"),
                 (true, true, true, false) => {}
-                (false, true, true, _) => output.push_str(&stack_output),
-                (true, false, true, _) => output.push_str(&stdout_output),
-                (true, true, false, _) => output.push_str(&stderr),
+                (false, true, true, _) => output.push_str(stack_output.trim()),
+                (true, false, true, _) => output.push_str(stdout_output.trim()),
+                (true, true, false, _) => output.push_str(stderr.trim()),
                 (st, out, err, _) => {
                     if st {
                         output.push_str("stack:\n");
-                        output.push_str(&stack_output);
+                        output.push_str(stack_output.trim());
                         output.push_str("\n");
                     }
                     if out {
                         output.push_str("stdout:\n");
-                        output.push_str(&stdout_output);
+                        output.push_str(stdout_output.trim());
                         output.push_str("\n");
                     }
                     if err {
                         output.push_str("stderr:\n");
-                        output.push_str(&stderr);
+                        output.push_str(stderr.trim());
                     }
                 }
             }
