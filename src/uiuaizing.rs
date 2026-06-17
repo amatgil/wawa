@@ -400,12 +400,12 @@ pub async fn get_output(
     );
 
     match result.await {
-        Ok((stdout, stderr, result)) => {
-            let out_is_one_stdout = stdout.len() == 1 && result.is_empty();
+        Ok((stdout, stderr, stack)) => {
+            let out_is_exactly_one_stdout = stdout.len() == 1 && stack.is_empty();
             let (stack_output, mut stack_attachments) =
-                process_output_items(result, out_is_one_stdout);
+                process_output_items(stack, out_is_exactly_one_stdout);
             let (stdout_output, mut stdout_attachments) =
-                process_output_items(stdout, out_is_one_stdout);
+                process_output_items(stdout, out_is_exactly_one_stdout);
 
             // NOTE: This doesn't distinguish stack-sourced vs stdout-sourced attachments, which might be bad
             let (mut output, mut attachments) = (String::new(), Vec::new());
@@ -423,7 +423,7 @@ pub async fn get_output(
                 (false, true, true, _) => output.push_str(stack_output.trim()),
                 (true, false, true, _) => output.push_str(stdout_output.trim()),
                 (true, true, false, _) => output.push_str(stderr.trim()),
-                (st, out, err, _) => {
+                (st, out, err, _att) => {
                     if st {
                         output.push_str("stack:\n");
                         output.push_str(stack_output.trim());
