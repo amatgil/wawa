@@ -413,15 +413,17 @@ pub async fn get_output(
             attachments.append(&mut stdout_attachments);
 
             match (
-                !stack_output.trim().is_empty(),
-                !stdout_output.trim().is_empty(),
-                !stderr.trim().is_empty(),
+                stack_output.trim().is_empty(),
+                stdout_output.trim().is_empty(),
+                stderr.trim().is_empty(),
+                attachments.is_empty(),
             ) {
-                (false, false, false) => output.push_str("<No output>"),
-                (true, false, false) => output.push_str(&stack_output),
-                (false, true, false) => output.push_str(&stdout_output),
-                (false, false, true) => output.push_str(&stderr),
-                (st, out, err) => {
+                (true, true, true, true) => output.push_str("<No output>"),
+                (true, true, true, false) => {}
+                (false, true, true, _) => output.push_str(&stack_output),
+                (true, false, true, _) => output.push_str(&stdout_output),
+                (true, true, false, _) => output.push_str(&stderr),
+                (st, out, err, _) => {
                     if st {
                         output.push_str("stack:\n");
                         output.push_str(&stack_output);
