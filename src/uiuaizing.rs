@@ -424,17 +424,17 @@ pub async fn get_output(
                 (true, false, true, _) => output.push_str(stdout_output.trim()),
                 (true, true, false, _) => output.push_str(stderr.trim()),
                 (st, out, err, _att) => {
-                    if st {
+                    if !st {
                         output.push_str("stack:\n");
                         output.push_str(stack_output.trim());
                         output.push_str("\n");
                     }
-                    if out {
+                    if !out {
                         output.push_str("stdout:\n");
                         output.push_str(stdout_output.trim());
                         output.push_str("\n");
                     }
-                    if err {
+                    if !err {
                         output.push_str("stderr:\n");
                         output.push_str(stderr.trim());
                     }
