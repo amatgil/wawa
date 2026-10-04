@@ -308,6 +308,7 @@ fn return_item(
     mut output: String,
     attachments: Vec<CreateAttachment>,
     item: OutputItem,
+    out_is_one_stack: bool,
     out_is_one_stdout: bool,
     curr_output_elem_index: &mut usize,
 ) -> (String, Vec<CreateAttachment>) {
@@ -321,8 +322,12 @@ fn return_item(
     ];
     match item {
         OutputItem::String(s) => {
-            let formatting: AnsiState =
-                STACK_OUTPUT_COLORS[*curr_output_elem_index % STACK_OUTPUT_COLORS.len()].into();
+            let formatting: AnsiState = match out_is_one_stack || out_is_one_stdout {
+                true => AnsiColor::White,
+                false => STACK_OUTPUT_COLORS[*curr_output_elem_index % STACK_OUTPUT_COLORS.len()],
+            }
+            .into();
+
             *curr_output_elem_index += 1;
             let _ = writeln!(output, "{}", formatting.style(&s));
             (output, attachments)
@@ -376,6 +381,7 @@ fn return_item(
 
 fn process_output_items(
     v: Vec<OutputItem>,
+    out_is_one_stack: bool,
     out_is_one_stdout: bool,
 ) -> (String, Vec<CreateAttachment>) {
     let mut curr_output_elem_idx = 0;
@@ -386,6 +392,7 @@ fn process_output_items(
                 output,
                 attachments,
                 item,
+                out_is_one_stack,
                 out_is_one_stdout,
                 &mut curr_output_elem_idx,
             )
@@ -423,10 +430,11 @@ pub async fn get_output(
     match result.await {
         Ok((stdout, stderr, stack)) => {
             let out_is_exactly_one_stdout = stdout.len() == 1 && stack.is_empty();
+            let out_is_exactly_one_stack = stack.len() == 1 && stdout.is_empty();
             let (stack_output, mut stack_attachments) =
-                process_output_items(stack, out_is_exactly_one_stdout);
+                process_output_items(stack, out_is_exactly_one_stack, out_is_exactly_one_stdout);
             let (stdout_output, mut stdout_attachments) =
-                process_output_items(stdout, out_is_exactly_one_stdout);
+                process_output_items(stdout, out_is_exactly_one_stack, out_is_exactly_one_stdout);
 
             // NOTE: This doesn't distinguish stack-sourced vs stdout-sourced attachments, which might be bad
             let (mut output, mut attachments) = (String::new(), Vec::new());
