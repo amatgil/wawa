@@ -10,7 +10,7 @@ use crate::find_emoji;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, Default)]
-struct AnsiState {
+pub struct AnsiState {
     color: AnsiColor,
     bold: bool,
     //italic: bool,
@@ -23,7 +23,7 @@ struct AnsiState {
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, Default)]
-enum AnsiColor {
+pub enum AnsiColor {
     Gray, // Also black
     Red,
     Green,
@@ -64,11 +64,11 @@ impl From<AnsiColor> for AnsiState {
 }
 
 impl AnsiState {
-    fn style(&self, text: &str) -> String {
+    pub fn style(&self, text: &str) -> String {
         if self.bold {
             format!("\x1B[{};1m{text}\x1B[0m", u8::from(self.color))
         } else {
-            format!("\x1B[{}m{text}", u8::from(self.color))
+            format!("\x1B[{}m{text}\x1B[0m", u8::from(self.color))
         }
     }
 

@@ -309,10 +309,22 @@ fn return_item(
     attachments: Vec<CreateAttachment>,
     item: OutputItem,
     out_is_one_stdout: bool,
+    curr_output_elem_index: &mut usize,
 ) -> (String, Vec<CreateAttachment>) {
+    const STACK_OUTPUT_COLORS: [AnsiColor; 6] = [
+        AnsiColor::Blue,
+        AnsiColor::Green,
+        AnsiColor::Cyan,
+        AnsiColor::Yellow,
+        AnsiColor::Red,
+        AnsiColor::Magenta,
+    ];
     match item {
         OutputItem::String(s) => {
-            let _ = writeln!(output, "{}", s);
+            let formatting: AnsiState =
+                STACK_OUTPUT_COLORS[*curr_output_elem_index % STACK_OUTPUT_COLORS.len()].into();
+            *curr_output_elem_index += 1;
+            let _ = writeln!(output, "{}", formatting.style(&s));
             (output, attachments)
         }
         OutputItem::Svg(s) => update_stdout_output(
@@ -366,9 +378,18 @@ fn process_output_items(
     v: Vec<OutputItem>,
     out_is_one_stdout: bool,
 ) -> (String, Vec<CreateAttachment>) {
+    let mut curr_output_elem_idx = 0;
     v.into_iter().fold(
         (String::new(), Vec::new()),
-        |(output, attachments), item| return_item(output, attachments, item, out_is_one_stdout),
+        |(output, attachments), item| {
+            return_item(
+                output,
+                attachments,
+                item,
+                out_is_one_stdout,
+                &mut curr_output_elem_idx,
+            )
+        },
     )
 }
 
@@ -419,7 +440,7 @@ pub async fn get_output(
                 attachments.is_empty(),
             ) {
                 (true, true, true, true) => output.push_str("<No output>"),
-                (true, true, true, false) => {}
+                (true, true, true, false) => {} // Don't pollute the attachments with '<No output>'
                 (false, true, true, _) => output.push_str(stack_output.trim()),
                 (true, false, true, _) => output.push_str(stdout_output.trim()),
                 (true, true, false, _) => output.push_str(stderr.trim()),
