@@ -148,7 +148,7 @@ pub async fn handle_run(msg: Message, http: Arc<Http>, code: &str) {
             ?output,
             "Sending correctly formed result of running the code"
         );
-        format!("```\n{output}\n```")
+        format!("```ansi\n{output}\n```")
     };
 
     // Make sure we're not over the char limit
@@ -214,7 +214,7 @@ pub async fn handle_show(msg: Message, http: Arc<Http>, code: &str) {
             ?output,
             "Sending correctly formed result of running the code"
         );
-        format!("```\n{output}\n```")
+        format!("```ansi\n{output}\n```")
     };
     let finalized_text = result;
     if finalized_text.len() > MAX_MSG_LEN {

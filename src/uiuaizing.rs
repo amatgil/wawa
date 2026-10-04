@@ -309,10 +309,22 @@ fn return_item(
     attachments: Vec<CreateAttachment>,
     item: OutputItem,
     out_is_one_stdout: bool,
+    curr_output_elem_index: &mut usize,
 ) -> (String, Vec<CreateAttachment>) {
+    const STACK_OUTPUT_COLORS: [AnsiColor; 6] = [
+        AnsiColor::Blue,
+        AnsiColor::Green,
+        AnsiColor::Cyan,
+        AnsiColor::Yellow,
+        AnsiColor::Red,
+        AnsiColor::Magenta,
+    ];
     match item {
         OutputItem::String(s) => {
-            let _ = writeln!(output, "{}", s);
+            let formatting: AnsiState =
+                STACK_OUTPUT_COLORS[*curr_output_elem_index % STACK_OUTPUT_COLORS.len()].into();
+            *curr_output_elem_index += 1;
+            let _ = writeln!(output, "{}", formatting.style(&s));
             (output, attachments)
         }
         OutputItem::Svg(s) => update_stdout_output(
@@ -366,9 +378,18 @@ fn process_output_items(
     v: Vec<OutputItem>,
     out_is_one_stdout: bool,
 ) -> (String, Vec<CreateAttachment>) {
+    let mut curr_output_elem_idx = 0;
     v.into_iter().fold(
         (String::new(), Vec::new()),
-        |(output, attachments), item| return_item(output, attachments, item, out_is_one_stdout),
+        |(output, attachments), item| {
+            return_item(
+                output,
+                attachments,
+                item,
+                out_is_one_stdout,
+                &mut curr_output_elem_idx,
+            )
+        },
     )
 }
 
