@@ -420,20 +420,24 @@ pub async fn send_message_advanced(msg: Message, http: &Arc<Http>, builder: Crea
     };
 }
 
-pub fn strip_triple_ticks(mut s: &str) -> &str {
-    s = s.trim();
-    if let Some(rest) = s.strip_prefix("```uiua") {
-        s = rest.trim();
-    } else if let Some(rest) = s.strip_prefix("```ua") {
-        s = rest.trim();
-    } else {
-        s = s.strip_prefix("```").unwrap_or(s).trim();
-        s = s.strip_prefix("\n").unwrap_or(s).trim();
+pub fn strip_triple_ticks(s: &str) -> &str {
+    let s = s.trim();
+
+    let patterns = [
+        r"^```uiua(.*)```$",
+        r"^```ua(.*)```$",
+        r"^```(.*)```$",
+        r"^``(.*)``$",
+        r"^`(.*)`$",
+    ];
+
+    for pat in patterns {
+        let re = regex::Regex::new(pat).expect("Someone can't write compile-time regex");
+        if let Some(body) = re.captures(s).and_then(|cap| cap.get(1)) {
+            return body.as_str();
+        }
     }
 
-    s = s.strip_suffix("\n").unwrap_or(s);
-    s = s.strip_suffix("```").unwrap_or(s);
-    s = s.strip_suffix("\n").unwrap_or(s);
     s
 }
 
