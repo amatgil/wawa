@@ -424,9 +424,9 @@ pub fn strip_triple_ticks(s: &str) -> &str {
     let s = s.trim();
 
     let patterns = [
-        r"^```uiua(.*)```$",
-        r"^```ua(.*)```$",
-        r"^```(.*)```$",
+        r"(?s)^```uiua(.*)```$",
+        r"(?s)^```ua(.*)```$",
+        r"(?s)^```(.*)```$",
         r"^``(.*)``$",
         r"^`(.*)`$",
     ];
@@ -500,4 +500,20 @@ pub fn strip_wawa_prefix(text: &str) -> Option<String> {
 
 pub fn is_question_mark(c: &ReactionType) -> bool {
     c == &ReactionType::Unicode('❔'.into())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn strip_triple_ticks_works() {
+        assert_eq!(strip_triple_ticks("no ticks"), "no ticks");
+        assert_eq!(strip_triple_ticks("`code in ticks`"), "code in ticks");
+        assert_eq!(strip_triple_ticks("+2`5"), "+2`5");
+        assert_eq!(strip_triple_ticks("``+2`5``"), "+2`5");
+        assert_eq!(strip_triple_ticks("```\n&p 5\n```"), "\n&p 5\n");
+        assert_eq!(strip_triple_ticks("```ua\n&p 5\n```"), "\n&p 5\n");
+        assert_eq!(strip_triple_ticks("```uiua\n&p 5\n```"), "\n&p 5\n");
+    }
 }
