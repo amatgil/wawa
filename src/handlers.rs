@@ -421,21 +421,23 @@ pub async fn send_message_advanced(msg: Message, http: &Arc<Http>, builder: Crea
 }
 
 pub fn strip_triple_ticks(s: &str) -> &str {
-    let s = s.trim();
+    let s = dbg!(s.trim());
 
     let patterns = [
-        r"^```uiua(.*)```$",
-        r"^```ua(.*)```$",
-        r"^```(.*)```$",
-        r"^``(.*)``$",
-        r"^`(.*)`$",
+        r"(?ms)\A```uiua(.*)```\z",
+        r"(?ms)\A```ua(.*)```\z",
+        r"(?ms)\A```(.*)```\z",
+        r"(?ms)\A``(.*)``\z",
+        r"(?ms)\A`(.*)`\z",
     ];
 
     for pat in patterns {
         let re = regex::Regex::new(pat).expect("Someone can't write compile-time regex");
-        if let Some(body) = re.captures(s).and_then(|cap| cap.get(1)) {
-            return body.as_str();
+        if let Some(body) = dbg!(re.captures(s)).and_then(|cap| cap.get(1)) {
+            eprintln!("Matched pattern {pat}");
+            return dbg!(body.as_str());
         }
+        eprintln!("Unmatched {pat}")
     }
 
     s
