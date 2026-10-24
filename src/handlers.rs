@@ -424,10 +424,10 @@ pub fn strip_triple_ticks(s: &str) -> &str {
     let s = s.trim();
 
     let patterns = [
-        r"(?ms)\A```uiua(.*)```\z",
-        r"(?ms)\A```ua(.*)```\z",
-        r"(?ms)\A```(.*)```\z",
-        r"(?m)\A`(.*)`\z",
+        r"(?s)^```uiua(.*)```$",
+        r"(?s)^```ua(.*)```$",
+        r"(?s)^```(.*)```$",
+        r"^`(.*)`$",
     ];
 
     for pat in patterns {
