@@ -136,14 +136,10 @@ pub async fn run_uiua(
     };
     if let Some(text) = text_of_refd {
         // This is so scuffed, there's definitely a proper way to make a proper binding from Rust
-        let text_split = text
-            .lines()
-            .map(|l| format!("$ {l} \n"))
-            .collect::<String>();
+        let text_split = text.lines().map(|l| format!("$ {l}\n")).collect::<String>();
         full_code.push_str("\n");
         full_code.push_str(&text_split);
         full_code.push_str("\n");
-        full_code.push_str("dro,`1\n"); // drop from the end because discord is stinky
         full_code.push_str("S = \n");
         backend.file_write_all(&Path::new("S"), &text.as_bytes())?;
     }
