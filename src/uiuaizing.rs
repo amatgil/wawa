@@ -143,7 +143,7 @@ pub async fn run_uiua(
         full_code.push_str("\n");
         full_code.push_str(&text_split);
         full_code.push_str("\n");
-        full_code.push_str("S =\n");
+        full_code.push_str("S = dro,`1\n"); // drop from the end because discord is stinky
         backend.file_write_all(&Path::new("S"), &text.as_bytes())?;
     }
     push_attachments(attachments, &mut full_code, "I").await?;
