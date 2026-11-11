@@ -323,20 +323,48 @@ pub async fn handle_append(msg: Message, http: Arc<Http>, to_append: &str) {
     }
 }
 
-#[instrument(skip(msg, http))]
-pub async fn handle_evalusername(msg: Message, http: Arc<Http>) {
-    const NOREPLY: &'static str = "Who's username? (Your message isn't replying to anyone)";
+#[instrument(skip(original_msg, http))]
+pub async fn handle_evalusername(original_msg: Message, http: Arc<Http>) {
+    const NOREPLY: &'static str = "Whose username? (Your message isn't replying to anyone)";
 
+    trace!("Got an 'evalusername");
     // this clone SUCKS
-    let Some(parent) = msg.clone().referenced_message else {
-        send_message(msg, &http, NOREPLY).await;
+    let Some(parent) = original_msg.clone().referenced_message else {
+        send_message(original_msg, &http, NOREPLY).await;
         return;
     };
-    let username = parent
-        .author_nick(http.clone())
-        .await
-        .unwrap_or(parent.author.name);
-    handle_run(msg, http, username.trim()).await;
+
+    // this is so ass but it's late and i want to get it over with
+    // (doing it with Message::nick_in (User::nick_in?) returns None always for
+    // some reason)
+    let username = if let Some(guild_id) = original_msg.guild_id {
+        match guild_id.member(&http, parent.author.id).await {
+            Ok(member) => match member.nick {
+                Some(nick) => {
+                    trace!(nick = nick, "User has nick!");
+                    nick
+                }
+                None => {
+                    trace!("User has no nick, using display name");
+                    member.display_name().into() // clone :/
+                }
+            },
+            Err(err) => {
+                trace!(id = ?parent.author.id, err=?err, "Could not get the parent as a member");
+                return;
+            }
+        }
+    } else {
+        trace!(
+            msg_id = ?original_msg.id,
+            "Could not get the guild id whatsoever!"
+        );
+        return;
+    };
+
+    trace!(user = username, "evalusername got username");
+
+    handle_run(original_msg, http, username.trim()).await;
 }
 
 #[instrument(skip(msg, ctx))]
@@ -390,11 +418,20 @@ pub async fn handle_unrecognized(msg: Message, http: Arc<Http>, code: &str) {
 // HELPERS
 
 #[instrument(skip_all)]
-pub async fn send_message(msg: Message, http: &Arc<Http>, mut text: &str) {
+pub async fn send_message(msg: Message, http: &Arc<Http>, text: &str) {
     info!(user = ?msg.author.name, text, "Sending message");
+
+    let mut text = serenity::utils::content_safe(
+        Cache::new(),
+        &text,
+        &serenity::utils::ContentSafeOptions::default(),
+        &[],
+    );
+
     if text.len() > MAX_MSG_LEN {
-        text = "Attempted to send a message that is way too long";
+        text = "Attempted to send a message that is way too long".into();
     }
+
     match msg.reply(http, text).await {
         Ok(_) => {}
         Err(e) => error!(reason = ?e, user = msg.author.name, "Error while sending"),
