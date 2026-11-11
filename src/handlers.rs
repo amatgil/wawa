@@ -2,8 +2,8 @@ use std::{convert::identity, sync::Arc};
 
 use crate::*;
 use serenity::all::{
-    Context, CreateAllowedMentions, CreateAttachment, CreateMessage, Embed, Emoji, GuildId, Http,
-    Message, ReactionType,
+    Cache, Context, CreateAllowedMentions, CreateAttachment, CreateMessage, Embed, Emoji, GuildId,
+    Http, Message, ReactionType,
 };
 use std::fmt::Write;
 use std::sync::LazyLock;
@@ -45,6 +45,7 @@ Available wawa commands:
 - [`a` `add` `append`]: append your message to the contents of whichever you're replying to, and run it
 - [`s` `show`]: like run, but only display stdout (or the stack if there is no stdout)
 - [`r` `run`]: format and run the code, showing the source, stdout and final stack
+- [`evalusername`]: evaluates the username of the person whose message you're replying to
 
 Examples:
 - `w!fmt below+ 1 2 3`
@@ -216,6 +217,7 @@ pub async fn handle_show(msg: Message, http: Arc<Http>, code: &str) {
         );
         format!("```ansi\n{output}\n```")
     };
+
     let finalized_text = result;
     if finalized_text.len() > MAX_MSG_LEN {
         debug!(flen = finalized_text.len(), text = ?&finalized_text.chars().take(200).collect::<String>(), "Final message AND shortened verion were too long");
@@ -319,6 +321,22 @@ pub async fn handle_append(msg: Message, http: Arc<Http>, to_append: &str) {
             }
         }
     }
+}
+
+#[instrument(skip(msg, http))]
+pub async fn handle_evalusername(msg: Message, http: Arc<Http>) {
+    const NOREPLY: &'static str = "Who's username? (Your message isn't replying to anyone)";
+
+    // this clone SUCKS
+    let Some(parent) = msg.clone().referenced_message else {
+        send_message(msg, &http, NOREPLY).await;
+        return;
+    };
+    let username = parent
+        .author_nick(http.clone())
+        .await
+        .unwrap_or(parent.author.name);
+    handle_run(msg, http, username.trim()).await;
 }
 
 #[instrument(skip(msg, ctx))]
