@@ -249,8 +249,15 @@ pub async fn handle_append(msg: Message, http: Arc<Http>, to_append: &str) {
         Append,
     }
     fn get_body_from(content: &str) -> Option<(String, PrefixKind)> {
-        const POSSIBLE_REPLY_PREFIXES_TO: [&str; 7] = [
-            "w!show", "w!s", "w!run", "w!r", "w!append", "w!append", "w!a",
+        const POSSIBLE_REPLY_PREFIXES_TO: [&str; 8] = [
+            "w!evalusername",
+            "w!show",
+            "w!s",
+            "w!run",
+            "w!r",
+            "w!append",
+            "w!append",
+            "w!a",
         ]; // order is relevant, don't be dumb
 
         let mut start_positions = POSSIBLE_REPLY_PREFIXES_TO
