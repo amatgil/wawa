@@ -332,7 +332,7 @@ pub async fn handle_append(msg: Message, http: Arc<Http>, to_append: &str) {
 
 #[instrument(skip(original_msg, http))]
 pub async fn handle_evalusername(original_msg: Message, http: Arc<Http>) {
-    const NOREPLY: &'static str = "Whose username? (Your message isn't replying to anyone)";
+    const NOREPLY: &'static str = "Who's username? (Your message isn't replying to anyone)";
 
     trace!("Got an 'evalusername");
     // this clone SUCKS
