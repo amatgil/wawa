@@ -6,11 +6,11 @@ use std::{
     collections::HashMap,
     io::Cursor,
     path::{Path, PathBuf},
-    sync::{Mutex, OnceLock},
+    sync::{Mutex, MutexGuard, OnceLock},
     time::Duration,
 };
 
-use uiua::{now, BigConstant, Report, SysBackend, EXAMPLE_TXT, EXAMPLE_UA};
+use uiua::{now, BigConstant, Handle, Report, SysBackend, EXAMPLE_TXT, EXAMPLE_UA};
 
 static START_TIME: OnceLock<f64> = OnceLock::new();
 
@@ -19,7 +19,9 @@ pub struct NativisedWebBackend {
     pub stdout: Mutex<Vec<OutputItem>>,
     pub stderr: Mutex<String>,
     pub trace: Mutex<String>,
-    pub files: Mutex<HashMap<PathBuf, Vec<u8>>>,
+    // Maps to bytes and the value of the handle
+    // The .1 of the tuple is the next index to give out
+    pub files: Mutex<(HashMap<PathBuf, (Vec<u8>, u64)>, u64)>,
 }
 
 impl NativisedWebBackend {
@@ -31,6 +33,20 @@ impl NativisedWebBackend {
         let t = self.stderr.lock().unwrap();
         t.clone()
     }
+    /// Returns a map from Path->(Bytes,Handle), and the next handle that can be given out
+    pub fn get_files<'a, 's: 'a>(
+        &'s self,
+        doing_what: &'static str,
+    ) -> Result<MutexGuard<'a, (HashMap<PathBuf, (Vec<u8>, u64)>, u64)>, String> {
+        let mut lock = self
+            .files
+            .lock()
+            .map_err(|_| format!("catastrophic error ({doing_what})"))?;
+        lock.1 += 1; // ...yes, i do increment this every time we _read_, not every time we create
+                     // but it should be *fine*, the programs are short-lived anyway. If you manage to
+                     // be hurt by this, high change it's your fault (..I hope)
+        Ok(lock)
+    }
 }
 
 impl Default for NativisedWebBackend {
@@ -39,11 +55,14 @@ impl Default for NativisedWebBackend {
             stdout: Vec::new().into(),
             stderr: String::new().into(),
             trace: String::new().into(),
-            files: HashMap::from([
-                ("example.ua".into(), EXAMPLE_UA.bytes().collect()),
-                ("example.txt".into(), EXAMPLE_TXT.bytes().collect()),
-            ])
-            .into(),
+            files: (
+                HashMap::from([
+                    ("example.ua".into(), (EXAMPLE_UA.bytes().collect(), 3)),
+                    ("example.txt".into(), (EXAMPLE_TXT.bytes().collect(), 4)),
+                ]),
+                5,
+            )
+                .into(),
         }
     }
 }
@@ -128,33 +147,51 @@ impl SysBackend for NativisedWebBackend {
         true
     }
     fn file_read_all(&self, path: &Path) -> Result<Vec<u8>, String> {
-        let files = self
-            .files
-            .lock()
-            .map_err(|_| "catastrophic error (reading file)".to_string())?;
-        files
-            .get(&path.to_owned())
+        let (map, _new_handle) = &mut *self.get_files("reading_all file")?;
+        map.get(&path.to_owned())
             .ok_or("File did not exist, did you send the attachment?".to_string())
             .cloned()
+            .map(|bs| bs.0)
     }
     fn file_write_all(&self, path: &Path, contents: &[u8]) -> Result<(), String> {
-        let mut files = self
-            .files
-            .lock()
-            .map_err(|_| "catastrophic error (writing file)".to_string())?;
-        files.insert(path.to_owned(), contents.to_owned());
+        let (map, new_handle) = &mut *self.get_files("writing_all file")?;
+
+        match map.get_mut(path.into()) {
+            Some((bytes, _h)) => bytes.extend_from_slice(contents),
+            None => {
+                // DO NOT CREATE_FILE HERE. INSTANT DEADLOCK AWAITS
+                map.insert(path.to_owned(), (contents.to_owned(), *new_handle));
+            }
+        }
         Ok(())
     }
     fn list_dir(&self, _: &str) -> Result<Vec<String>, String> {
-        let files = self
-            .files
-            .lock()
-            .map_err(|_| "catastrophic error reading files")?;
-
-        Ok(files
+        let (map, _) = &mut *self.get_files("listing dir")?;
+        Ok(map
             .keys()
             .map(|p| p.to_string_lossy().to_string())
             .collect())
+    }
+    fn write(&self, Handle(handle): Handle, contents: &[u8]) -> Result<(), String> {
+        let (map, _) = &mut *self.get_files("writing file")?;
+        let (bytes, _handle) = map
+            .values_mut()
+            .find(|(_bytes, h)| handle == *h)
+            .ok_or(format!("No file with handle {handle} exists"))?;
+
+        bytes.extend_from_slice(contents);
+        Ok(())
+    }
+    fn create_file(&self, path: &Path) -> Result<Handle, String> {
+        let (map, h) = &mut *self.get_files("creating file")?;
+        map.insert(path.into(), (vec![], *h)); // i assume unique handle
+        Ok(Handle(*h))
+    }
+    fn close(&self, Handle(_handle): Handle) -> Result<(), String> {
+        // THIS MUST BE A NO-OP
+        // We've only got files, not streams, and "closing a file" is just dropping the handle
+        // (if i ever add streams, remember to use retain instead of remove/remove_entry)
+        Ok(())
     }
     fn big_constant(&self, key: BigConstant) -> Result<Cow<'static, [u8]>, String> {
         Ok(Cow::Borrowed(match key {
