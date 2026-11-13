@@ -90,7 +90,13 @@ pub fn find_emoji(emojis: &[Emoji], name: &str) -> Option<String> {
 #[instrument(skip_all)]
 pub async fn handle_ping(msg: Message, http: Arc<Http>) {
     trace!("Running ping handler");
-    send_message(msg, &http, "Pong!").await
+    // [Floats] are uniformly distributed in the half-open range [0, 1).
+    if rand::random::<f32>() < 0.067 {
+        trace!("Missed pingreturn");
+        send_message(msg, &http, "Drat, I missed the return of your serve").await
+    } else {
+        send_message(msg, &http, "Pong!").await
+    }
 }
 
 #[instrument(skip_all)]
