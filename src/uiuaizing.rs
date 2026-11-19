@@ -99,7 +99,7 @@ pub async fn run_uiua(
                                   bindname_if_img: &str| {
         let mut i = 0; // image index, not incremented for non-image attachemnts
 
-        for attachment in attchs.iter().rev() {
+        for attachment in attchs.iter() {
             let url = &attachment.url;
             let filename = attachment.filename.clone();
             let data = if let (Some(w), Some(h)) = (attachment.width, attachment.height) {
