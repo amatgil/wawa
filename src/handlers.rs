@@ -29,7 +29,7 @@ Attachments in your message (or the message you're replying to, as well as that 
 For example, typing `w!r abs S` will uppercase the replied message's text, or error with `Missing binding` if the message isn't a reply.
 (Note that they will also be included in the internal (ephemeral) filesystem with their original names: typing `w!r not&fras"somename"` will negate the contents of the attachment called "somename" (both in your message and the referenced one).
 
-Ping <@328851809357791232> for any questions or if you want the version to get bumped
+Ping @.casenc for any questions or if you want the version to get bumped
 "#;
 
 const COMMANDS_MESSAGE: &str = r#"
